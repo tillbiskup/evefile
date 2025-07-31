@@ -2,9 +2,13 @@
 evefile
 =======
 
-*Transitional package to read eveH5 files containing synchrotron radiometry data recorded at BESSY/ML in Berlin.*
+*Transitional package to read eveH5 files containing synchrotron radiometry data recorded at BESSY/MLS in Berlin.*
 
-Welcome! This is evefile, a Python package for **importing (synchrotron) radiometry data** obtained at one of the beamlines at **BESSY-II or MLS in Berlin**, mostly operated by the German National Metrology Institute, the `Physikalisch-Technische Bundesanstalt (PTB) <https://www.ptb.de/>`_. This package acts as main interface between the (eveH5) data files and the processing and analysis code and provides abstractions that allow for a convenient and intuitive access to the data and information contained in the data files. For related packages for viewing and analysing those data, have a look at the "related projects" section below.
+Welcome! This is evefile, a Python package for **importing (synchrotron) radiometry data** obtained at one of the beamlines at **BESSY-II or MLS in Berlin**, mostly operated by the German National Metrology Institute, the `Physikalisch-Technische Bundesanstalt (PTB) <https://www.ptb.de/>`_. This package acts as transitional interface between the (eveH5) data files and the processing and analysis code. For related packages for importing, viewing, and analysing those data, have a look at the "related projects" section below.
+
+
+.. note::
+    This is a *transitional* package meant to be used only until the `evedata package <https://evedata.docs.radiometry.de/>`_ is considered sufficiently stable for routine use. It provides a rather low-level interface to the eveH5 data files, lacking all the abstractions available within evedata.
 
 
 Features
