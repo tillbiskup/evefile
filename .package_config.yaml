@@ -1,0 +1,25 @@
+package:
+  name: 'evefile'
+  author: 'Till Biskup'
+  author_email: 'till.biskup@ptb.de'
+  year: '2025'
+  description: 'Transitional package to read eveH5 files containing synchrotron radiometry data recorded at BESSY/ML in Berlin'
+  urls:
+    main: ''
+    documentation: ''
+    source: 'https://gitlab1.ptb.de/eve/eve-file-py'
+  keywords: ["eve", "radiometry", "synchrotron", "PTB", "BESSY", "MLS"]
+  install_requires: ["evedata"]
+  license: GPLv3
+documentation:
+  logo: ''
+  favicon: ''
+  language: en
+options:
+  logging: false
+  git: true
+  gui: false
+gui:
+  splash: true
+  organisation: ''
+  domain: ''

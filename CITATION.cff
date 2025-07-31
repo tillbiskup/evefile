@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using these metadata.
+title: evefile
+abstract: >
+    Transitional package to read eveH5 files containing synchrotron radiometry data recorded at BESSY/ML in Berlin
+authors:
+  - family-names: Biskup
+    given-names: Till
+    #orcid: "https://orcid.org/<YOUR ORCID ID HERE>"
+type: software
+license: GPL-3.0
+repository-code: "https://gitlab1.ptb.de/eve/eve-file-py"
+keywords:
+  - "eve"
+  - "radiometry"
+  - "synchrotron"
+  - "PTB"
+  - "BESSY"
+  - "MLS"
+# Highly recommended starting with the first release: DOI via Zenodo
+#identifiers:
+#  - description: "The concept DOI of the work."
+#    type: doi
+#    value: 10.5281/zenodo.########
