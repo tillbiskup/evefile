@@ -11,7 +11,8 @@ def read(filename):
 setuptools.setup(
     name="evefile",
     version=read("VERSION").strip(),
-    description="Transitional package to read eveH5 files containing synchrotron radiometry data recorded at BESSY/ML in Berlin",
+    description="Transitional package to read eveH5 files containing "
+    "synchrotron radiometry data recorded at BESSY/ML in Berlin",
     long_description=read("README.rst"),
     long_description_content_type="text/x-rst",
     author="Till Biskup",
@@ -33,8 +34,6 @@ setuptools.setup(
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
