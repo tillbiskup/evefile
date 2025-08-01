@@ -13,3 +13,7 @@ Controllers of the evefile package.
 .. toctree::
     :maxdepth: 1
 
+    evefile.controllers.joining
+    evefile.controllers.version_mapping
+
+

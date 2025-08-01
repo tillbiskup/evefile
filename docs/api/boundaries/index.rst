@@ -14,4 +14,6 @@ Interfaces of the evefile package: facades and resources.
     :maxdepth: 1
 
     evefile.boundaries.evefile
+    evefile.boundaries.eveh5
+
 

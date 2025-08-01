@@ -7,6 +7,15 @@ Each software has some kind of architecture, and this is the place to describe i
 Currently, the ``evefile`` package is divided into three technical layers, *i.e.* boundaries ("interfaces"), controllers, and entities (BCE). The boundaries layer contains both, the "interfaces" ("adapters") pointing to the user (facades) and those pointing to the underlying infrastructure (resources). Here, "user" can be either actual human users or other functional layers.
 
 
+.. _fig-uml_evedata:
+
+.. figure:: uml/evefile-functional-layers.*
+    :align: center
+
+    An UML package diagram of the evefile package. To hide the names of the technical layers from the user, one could think of importing the relevant classes (basically the facades) in the ``__init__.py`` files of the respective top-level functional packages.
+
+
+
 .. admonition:: General remarks on the UML class diagrams
 
     The UML class diagrams in this document try to consistently follow a series of conventions listed below. This list is not meant to be exhaustive and may change over time.
@@ -128,7 +137,7 @@ version_mapping module
 
 For details, see the documentation of the :mod:`version_mapping <evefile.controllers.version_mapping>` module.
 
-Being version agnostic with respect to eveH5 and SCML schema versions is a central aspect of the evedata package. This requires facilities mapping the actual eveH5 files to the data model provided by the entities technical layer of the evefile subpackage. The :class:`EveFile <evefile.boundaries.evefile.EveFile>` facade obtains the correct :class:`VersionMapper <evefile.controllers.version_mapping.VersionMapper>` object via the :class:`VersionMapperFactory  <evefile.controllers.version_mapping.VersionMapperFactory>`, providing an :class:`HDF5File  <evefile.boundaries.eveh5.HDF5File>` resource object to the factory. It is the duty of the factory to obtain the "version" attribute from the :class:`HDF5File  <evefile.boundaries.eveh5.HDF5File>` object (possibly requiring to explicitly get the attributes of the root group of the :class:`HDF5File  <evefile.boundaries.eveh5.HDF5File>` object).
+Being version agnostic with respect to eveH5 schema versions is a central aspect of the evedata package. This requires facilities mapping the actual eveH5 files to the data model provided by the entities technical layer of the evefile subpackage. The :class:`EveFile <evefile.boundaries.evefile.EveFile>` facade obtains the correct :class:`VersionMapper <evefile.controllers.version_mapping.VersionMapper>` object via the :class:`VersionMapperFactory  <evefile.controllers.version_mapping.VersionMapperFactory>`, providing an :class:`HDF5File  <evefile.boundaries.eveh5.HDF5File>` resource object to the factory. It is the duty of the factory to obtain the "version" attribute from the :class:`HDF5File  <evefile.boundaries.eveh5.HDF5File>` object (possibly requiring to explicitly get the attributes of the root group of the :class:`HDF5File  <evefile.boundaries.eveh5.HDF5File>` object).
 
 
 .. figure:: uml/evefile.controllers.version_mapping.*

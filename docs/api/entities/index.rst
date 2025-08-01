@@ -12,3 +12,9 @@ Entities of the evefile package.
 .. toctree::
     :maxdepth: 1
 
+    evefile.entities.data
+    evefile.entities.file
+    evefile.entities.metadata
+
+
+
