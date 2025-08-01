@@ -1,6 +1,17 @@
 Installation
 ============
 
+.. important::
+
+    This section assumes the evefile package to be available officially from the Python Package Index (PyPI), what is not (yet) the case. Hence, for the time being, you need to install it via pip using a local path:
+
+    .. code-block:: bash
+
+        pip install <path/to/evefile>
+
+    Besides that, all other information on this page is still valid.
+
+
 Installing the evefile package is as simple as installing any other Python package, as evefile is available from the `Python Package Index (PyPI) <https://www.pypi.org/>`_. Simply open a terminal on your computer and type:
 
 .. code-block:: bash
