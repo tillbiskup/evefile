@@ -1,0 +1,46 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+class HDF5Item {
+    filename : string
+    name : string
+    attributes : dict
+    get_attributes()
+}
+
+note right of HDF5Item::filename {
+    filename is the name (including path)
+    of the HDF5 file originally read.
+    Together with the name attribute,
+    this makes accessing contents
+    on demand (deferred load) trivial.
+}
+
+note left of HDF5Item::name {
+    name is the full path
+    to the HDF5 item,
+    necessary for accessing
+    via h5py.
+}
+
+class HDF5Group extends HDF5Item {
+    <item> : HDF5Item
+    add_item()
+}
+
+note right of HDF5Group::<item> {
+    Each item is added as attribute
+    to the class and accessible via
+    an iterator: "for item in group".
+}
+
+class HDF5Dataset extends HDF5Item {
+    data : np.ndarray
+    get_data()
+}
+
+
+class HDF5File extends HDF5Group {
+    read()
+}
+@enduml

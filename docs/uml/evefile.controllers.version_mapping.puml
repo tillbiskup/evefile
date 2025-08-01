@@ -1,0 +1,43 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+class VersionMapperFactory {
+    +eveh5 : HDF5File
+    +get_mapper()
+}
+
+class VersionMapper {
+    +source : HDF5File
+    +destination : EveFile
+    -_mapping : Mapping
+    +map()
+}
+note left of VersionMapper
+    For EveFile and HDF5File
+    see the respective modules
+    implementing these classes.
+
+    VersionMapper implements
+    that part of the mapping
+    functionality common to all
+    versions of the eveH5 schema.
+endnote
+
+class Mapping {
+    +filename : string
+    +mapping_table : dict
+    +load()
+}
+
+VersionMapper *- Mapping
+
+class VersionMapperVx extends VersionMapper {
+}
+note left of VersionMapperVx
+    Most probably, the classes for
+    the different eveH5 schemas
+    are not a hierarchy, but all direct
+    subclasses of VersionMapper.
+endnote
+
+@enduml

@@ -1,0 +1,64 @@
+@startuml
+
+class Metadata {
+    name : string
+    options : dict
+}
+note right of Metadata::options
+    The difference between ""options"" here in Metadata and ""options"" in Data:
+    Options in Data vary potentially for each data point, hence are arrays,
+    while options in Metadata are scalar and don't change for a Data object.
+end note
+
+class Data {
+}
+note bottom: See diagram for\ndata module.
+
+interface AbstractDeviceMetadata {
+    id : string
+    pv : string
+    access_mode : string
+}
+
+class MeasureMetadata extends Metadata {
+    unit : string
+}
+
+class MonitorMetadata extends Metadata implements AbstractDeviceMetadata {
+}
+
+class DeviceMetadata extends MeasureMetadata implements AbstractDeviceMetadata  {
+}
+
+class AxisMetadata extends MeasureMetadata implements AbstractDeviceMetadata  {
+    deadband : float
+}
+
+class ChannelMetadata extends MeasureMetadata implements AbstractDeviceMetadata  {
+}
+
+class TimestampMetadata extends MeasureMetadata {
+}
+
+class AverageChannelMetadata extends ChannelMetadata {
+    n_averages : integer
+    low_limit : float
+    max_attempts : integer
+    max_deviation : float
+}
+
+class IntervalChannelMetadata extends ChannelMetadata {
+    trigger_interval : float
+}
+
+Metadata --* Data
+
+interface NormalizedMetadata {
+    normalize_id : string
+}
+
+class AverageNormalizedChannelMetadata extends AverageChannelMetadata implements NormalizedMetadata {}
+
+class IntervalNormalizedChannelMetadata extends IntervalChannelMetadata implements NormalizedMetadata {}
+
+@enduml

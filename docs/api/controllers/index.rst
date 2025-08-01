@@ -1,0 +1,15 @@
+evefile.controllers subpackage
+==============================
+
+Controllers of the evefile package.
+
+
+.. automodule:: evefile.controllers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+.. toctree::
+    :maxdepth: 1
+

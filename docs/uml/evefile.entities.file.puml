@@ -1,0 +1,36 @@
+@startuml
+
+class File {
+    metadata : Metadata
+    log_messages : LogMessage[]
+    snapshots : Data{}
+    monitors : Data{}
+    position_timestamps : TimestampData
+}
+
+File *-- "n" Data
+
+class Metadata{
+    filename : string
+    eveh5_version : string
+    eve_version : string
+    xml_version: string
+    measurement_station : string
+    start : datetime
+    end : datetime
+    description : string
+    simulation : boolean
+    preferred_axis : string
+    preferred_channel : string
+    preferred_normalisation_channel : string
+}
+
+class LogMessage {
+    timestamp : datetime
+    message : string
+}
+
+File *-- Metadata
+File "1" *-- "n" LogMessage
+
+@enduml

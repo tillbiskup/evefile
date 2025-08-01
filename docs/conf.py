@@ -74,6 +74,9 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
+# Number figures and alike
+numfig = True
+
 # Autodoc configuration
 autodoc_default_options = {
     "members": True,

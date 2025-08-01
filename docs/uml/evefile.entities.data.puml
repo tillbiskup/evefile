@@ -1,0 +1,80 @@
+@startuml
+'skinparam dpi 150
+
+class Data {
+    metadata : Metadata
+    options : dict
+    importer[] : DataImporter
+    _data : np.ndarray
+    data()
+    get_data()
+}
+
+class DataImporter {
+    source : string
+    load()
+}
+
+class HDF5DataImporter extends DataImporter {
+    item : string
+    mapping : dict
+}
+
+class Metadata {
+}
+note left: See diagram for\nmetadata module.
+
+Data *- "n" DataImporter
+Metadata -* Data
+
+class MeasureData extends Data {
+    {field} position_counts : np.ndarray(dtype=int)
+}
+
+class MonitorData extends Data {
+    {field} milliseconds : np.ndarray(dtype=int)
+}
+
+Metadata -[hidden]> MonitorData
+MonitorData -[hidden]> MeasureData
+
+class DeviceData extends MeasureData
+
+class AxisData extends MeasureData {
+    set_values : np.ndarray
+}
+
+class ChannelData extends MeasureData {
+}
+
+class TimestampData extends MeasureData {
+    {field} _first_positions : np.ndarray(dtype=int)
+    {field} _last_positions : np.ndarray(dtype=int)
+    get_position(timestamp, mode=last)
+}
+
+interface NormalizedChannelData {
+    normalized_data : np.ndarray
+    normalizing_data : np.ndarray
+}
+
+class AverageChannelData extends ChannelData {
+    {field} attempts : np.ndarray(dtype=int)
+    mean : np.ndarray
+    std : np.ndarray
+}
+
+class AverageNormalizedChannelData extends AverageChannelData implements NormalizedChannelData {
+}
+
+class IntervalChannelData extends ChannelData {
+    raw_data : raggedarray
+    {field} counts : np.ndarray(dtype=int)
+    mean : np.ndarray
+    std : np.ndarray
+}
+
+class IntervalNormalizedChannelData extends IntervalChannelData implements NormalizedChannelData {
+}
+
+@enduml
