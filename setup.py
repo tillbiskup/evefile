@@ -44,7 +44,8 @@ setuptools.setup(
         "Development Status :: 4 - Beta",
     ],
     install_requires=[
-        "evedata",
+        "h5py",
+        "numpy",
     ],
     extras_require={
         "dev": [
