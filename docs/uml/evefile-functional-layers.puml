@@ -1,0 +1,31 @@
+@startuml
+'skinparam dpi 150
+
+package evefile {
+    package evefile.boundaries {
+        package evefile {}
+        package eveh5 {}
+        evefile -> eveh5
+    }
+    package evefile.controllers {
+        package timestamp_mapping {}
+        package joining {}
+        package version_mapping {}
+    }
+    package evefile.entities {
+        package evefile.entities.file {
+        }
+        package evefile.entities.data {
+        }
+        package evefile.entities.metadata {
+        }
+        file -down-> data
+        data -down-> metadata
+
+    }
+    evefile.boundaries --> evefile.controllers
+    evefile.controllers --> evefile.entities
+}
+
+
+@enduml
