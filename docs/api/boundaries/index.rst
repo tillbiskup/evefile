@@ -1,8 +1,6 @@
 evefile.boundaries subpackage
 =============================
 
-Interfaces of the evefile package: facades and resources.
-
 
 .. automodule:: evefile.boundaries
    :members:

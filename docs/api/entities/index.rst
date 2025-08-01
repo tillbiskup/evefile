@@ -1,7 +1,6 @@
 evefile.entities subpackage
 ===========================
 
-Entities of the evefile package.
 
 .. automodule:: evefile.entities
    :members:

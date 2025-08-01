@@ -1,8 +1,6 @@
 evefile.controllers subpackage
 ==============================
 
-Controllers of the evefile package.
-
 
 .. automodule:: evefile.controllers
    :members:

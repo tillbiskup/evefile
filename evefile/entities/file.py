@@ -7,7 +7,7 @@ they clearly abstract from the internal structure of these files.
 Furthermore, there are different versions of the underlying schema
 (*i.e.*, organisation) of these files, and the entities abstract away from
 these differences as well. The key concept is to provide users of the
-``evedata`` interface with useful abstractions allowing to conveniently
+``evefile`` interface with useful abstractions allowing to conveniently
 access all the data present in an eveH5 file.
 
 
@@ -38,8 +38,6 @@ Module documentation
 
 import datetime
 import logging
-
-import evedata.scan.boundaries.scan
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +89,7 @@ class File:
     --------
     The :class:`File` class is not meant to be used directly, as any
     entities, but rather indirectly by means of the respective facades in
-    the boundaries technical layer of the :mod:`evefile` subpackage.
+    the boundaries technical layer of the ``evefile`` package.
     Hence, for the time being, there are no dedicated examples how to use
     this class. Of course, you can instantiate an object as usual.
 
@@ -164,7 +162,7 @@ class Metadata:
     --------
     The :class:`Metadata` class is not meant to be used directly, as any
     entities, but rather indirectly by means of the respective facades in
-    the boundaries technical layer of the :mod:`evefile` subpackage.
+    the boundaries technical layer of the ``evefile`` package.
     Hence, for the time being, there are no dedicated examples how to use
     this class. Of course, you can instantiate an object as usual.
 
@@ -207,7 +205,7 @@ class LogMessage:
     --------
     The :class:`Scan` class is not meant to be used directly, as any
     entities, but rather indirectly by means of the respective facades in
-    the boundaries technical layer of the :mod:`evefile` subpackage.
+    the boundaries technical layer of the ``evefile`` package.
     Hence, for the time being, there are no dedicated examples how to use
     this class. Of course, you can instantiate an object as usual.
 

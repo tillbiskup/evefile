@@ -53,9 +53,14 @@ class TimestampData extends MeasureData {
     get_position(timestamp, mode=last)
 }
 
+class SinglePointChannelData extends ChannelData {}
+
 interface NormalizedChannelData {
     normalized_data : np.ndarray
     normalizing_data : np.ndarray
+}
+
+class SinglePointNormalizedChannelData extends SinglePointChannelData implements NormalizedChannelData {
 }
 
 class AverageChannelData extends ChannelData {
