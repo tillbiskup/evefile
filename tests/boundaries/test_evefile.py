@@ -1,3 +1,91 @@
+import os
 import unittest
 
 from evefile.boundaries import evefile
+
+
+class DummyHDF5File:
+    def __init__(self, filename=""):
+        self.filename = filename
+
+    def create(self, scml=True):
+        with h5py.File(self.filename, "w") as file:
+            file.attrs["EVEH5Version"] = np.bytes_(["7"])
+            file.attrs["Version"] = np.bytes_(["2.0"])
+            file.attrs["XMLversion"] = np.bytes_(["9.2"])
+            file.attrs["Comment"] = np.bytes_([""])
+            file.attrs["Location"] = np.bytes_(["Unittest"])
+            file.attrs["StartTimeISO"] = np.bytes_(["2024-06-03T12:01:32"])
+            file.attrs["EndTimeISO"] = np.bytes_(["2024-06-03T12:01:37"])
+            file.attrs["Simulation"] = np.bytes_(["no"])
+            c1 = file.create_group("c1")
+            main = c1.create_group("main")
+            meta = c1.create_group("meta")
+            simmot = main.create_dataset(
+                "SimMot:01",
+                data=np.ones(
+                    [5],
+                    dtype=np.dtype(
+                        [("PosCounter", "<i4"), ("SimMot:01", "<f8")]
+                    ),
+                ),
+            )
+            simmot["PosCounter"] = np.linspace(1, 5, 5)
+            simmot["SimMot:01"] = np.random.random(5)
+            simmot.attrs["Name"] = np.bytes_(["foo"])
+            simmot.attrs["Access"] = np.bytes_(["ca:foobar"])
+            simmot.attrs["DeviceType"] = np.bytes_(["Axis"])
+            simchan = main.create_dataset(
+                "SimChan:01",
+                data=np.ones(
+                    [5],
+                    dtype=np.dtype(
+                        [("PosCounter", "<i4"), ("SimChan:01", "<f8")]
+                    ),
+                ),
+            )
+            simchan["PosCounter"] = np.linspace(1, 5, 5)
+            simchan["SimChan:01"] = np.random.random(5)
+            simchan.attrs["Name"] = np.bytes_(["bar"])
+            simchan.attrs["Access"] = np.bytes_(["ca:barbaz"])
+            simchan.attrs["DeviceType"] = np.bytes_(["Channel"])
+            simchan.attrs["Detectortype"] = np.bytes_(["Standard"])
+            data = np.ndarray(
+                [10],
+                dtype=np.dtype(
+                    [("PosCounter", "<i4"), ("PosCountTimer", "<i4")]
+                ),
+            )
+            poscounttimer = meta.create_dataset("PosCountTimer", data=data)
+            poscounttimer.attrs["Unit"] = np.bytes_(["msecs"])
+
+
+class TestEveFile(unittest.TestCase):
+    def setUp(self):
+        self.evefile = evefile.EveFile()
+        self.filename = "file.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "metadata",
+            "log_messages",
+            "data",
+            "snapshots",
+            "monitors",
+            "position_timestamps",
+            "filename",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.evefile, attribute))
+
+    def test_setting_filename_sets_metadata_filename(self):
+        self.evefile.filename = self.filename
+        self.assertEqual(self.evefile.metadata.filename, self.filename)
