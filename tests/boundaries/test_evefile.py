@@ -1,6 +1,9 @@
 import os
 import unittest
 
+import h5py
+import numpy as np
+
 from evefile.boundaries import evefile
 
 
@@ -8,7 +11,7 @@ class DummyHDF5File:
     def __init__(self, filename=""):
         self.filename = filename
 
-    def create(self, scml=True):
+    def create(self):
         with h5py.File(self.filename, "w") as file:
             file.attrs["EVEH5Version"] = np.bytes_(["7"])
             file.attrs["Version"] = np.bytes_(["2.0"])
@@ -62,8 +65,8 @@ class DummyHDF5File:
 
 class TestEveFile(unittest.TestCase):
     def setUp(self):
-        self.evefile = evefile.EveFile()
         self.filename = "file.h5"
+        self.evefile = evefile.EveFile(filename=self.filename)
 
     def tearDown(self):
         if os.path.exists(self.filename):
@@ -87,5 +90,23 @@ class TestEveFile(unittest.TestCase):
                 self.assertTrue(hasattr(self.evefile, attribute))
 
     def test_setting_filename_sets_metadata_filename(self):
-        self.evefile.filename = self.filename
-        self.assertEqual(self.evefile.metadata.filename, self.filename)
+        filename = "foobar.h5"
+        self.evefile.filename = filename
+        self.assertEqual(self.evefile.metadata.filename, filename)
+
+    def test_init_with_filename_sets_metadata_filename(self):
+        filename = "foobar.h5"
+        file = evefile.EveFile(filename=filename)
+        self.assertEqual(filename, file.metadata.filename)
+
+    def test_load_sets_file_metadata(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile.load()
+        root_mappings = {
+            "eveh5_version": "7",
+            "measurement_station": "Unittest",
+        }
+        for key, value in root_mappings.items():
+            with self.subTest(key=key, val=value):
+                self.assertEqual(getattr(self.evefile.metadata, key), value)

@@ -98,6 +98,8 @@ Module documentation
 import logging
 
 from evefile.entities.file import File
+from evefile.boundaries.eveh5 import HDF5File
+from evefile.controllers import version_mapping
 
 
 logger = logging.getLogger(__name__)
@@ -112,11 +114,22 @@ class EveFile(File):
     contents of an individual eveH5 file.
 
     Individual measurements are saved in HDF5 files using a particular
-    schema (eveH5). Besides file-level metadata, there are log messages,
-    a scan description (originally an XML/SCML file), and the actual data.
+    schema (eveH5). Besides file-level metadata, there are log messages
+    and the actual data.
 
     The data are organised in three functionally different sections: data,
-    snapshots, and monitors.
+    snapshots, and monitors. While the "data" section contains the data of
+    motor axes moved and detector channels read out during the scan,
+    the "snapshot" section contains values at distinct times (usually at
+    the very beginning of a scan), usually of more devices than used in
+    the scan. The "monitors" section contains data of all those devices
+    monitored during the scan, meaning that only changes in values are
+    recorded, together with their timestamp (rather than position count).
+
+    Values from axes contained in the "snapshot" section are used for data
+    joining, while all other values can be regarded as telemetry data for
+    the setup. All values from the "monitors" section are strictly
+    telemetry data for the setup.
 
 
     Attributes
@@ -134,7 +147,7 @@ class EveFile(File):
         Data recorded from the devices involved in the scan.
 
         Each item is an instance of
-        :class:`evedata.evefile.entities.data.Data`.
+        :class:`evefile.entities.data.Data`.
 
     snapshots : :class:`dict`
         Device data recorded as snapshot during a measurement.
@@ -220,3 +233,17 @@ class EveFile(File):
     @filename.setter
     def filename(self, filename=""):
         self.metadata.filename = filename
+
+    def load(self):
+        """Load contents of an eveH5 file containing data."""
+        self._read_and_map_eveh5_file()
+
+    def _read_and_map_eveh5_file(self):
+        eveh5 = HDF5File()
+        eveh5.read_attributes = True
+        eveh5.close_file = False
+        eveh5.read(filename=self.metadata.filename)
+        mapper_factory = version_mapping.VersionMapperFactory()
+        mapper = mapper_factory.get_mapper(eveh5)
+        mapper.map(source=eveh5, destination=self)
+        eveh5.close()

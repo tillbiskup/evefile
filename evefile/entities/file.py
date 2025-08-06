@@ -47,8 +47,8 @@ class File:
     Representation of all information available from a given eveH5 file.
 
     Individual measurements are saved in HDF5 files using a particular
-    schema (eveH5). Besides file-level metadata, there are log messages,
-    a scan description (originally an XML/SCML file), and the actual data.
+    schema (eveH5). Besides file-level metadata, there are log messages
+    and the actual data.
 
     The data are organised in three functionally different sections: data,
     snapshots, and monitors.

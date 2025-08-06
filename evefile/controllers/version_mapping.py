@@ -185,6 +185,7 @@ Module documentation
 
 """
 
+import datetime
 import logging
 import sys
 
@@ -199,13 +200,13 @@ class VersionMapperFactory:
 
     There are different versions of the schema underlying the eveH5 files.
     Hence, mapping the contents of an eveH5 file to the data model of the
-    evedata package requires to get the correct mapper for the specific
+    evefile package requires to get the correct mapper for the specific
     version. This is the typical use case for the factory pattern.
 
 
     Attributes
     ----------
-    eveh5 : :class:`evedata.evefile.boundaries.eveh5.HDF5File`
+    eveh5 : :class:`evefile.boundaries.eveh5.HDF5File`
         Python object representation of an eveH5 file
 
     Raises
@@ -250,13 +251,13 @@ class VersionMapperFactory:
 
         Parameters
         ----------
-        eveh5 : :class:`evedata.evefile.boundaries.eveh5.HDF5File`
+        eveh5 : :class:`evefile.boundaries.eveh5.HDF5File`
             Python object representation of an eveH5 file
 
         Returns
         -------
         mapper : :class:`VersionMapper`
-            Mapper used to map the eveH5 file contents to evedata structures.
+            Mapper used to map the eveH5 file contents to evefile structures.
 
         Raises
         ------
@@ -286,7 +287,7 @@ class VersionMapperFactory:
 
 class VersionMapper:
     """
-    Mapper for mapping the eveH5 file contents to evedata structures.
+    Mapper for mapping the eveH5 file contents to evefile structures.
 
     This is the base class for all version-dependent mappers. Given that
     there are different versions of the eveH5 schema, each version gets
@@ -298,11 +299,11 @@ class VersionMapper:
 
     Attributes
     ----------
-    source : :class:`evedata.evefile.boundaries.eveh5.HDF5File`
+    source : :class:`evefile.boundaries.eveh5.HDF5File`
         Python object representation of an eveH5 file
 
-    destination : :class:`evedata.evefile.boundaries.evefile.EveFile`
-        High(er)-level evedata structure representing an eveH5 file
+    destination : :class:`evefile.boundaries.evefile.EveFile`
+        High(er)-level evefile structure representing an eveH5 file
 
     datasets2map_in_main : :class:`list`
         Names of the datasets in the main section not yet mapped.
@@ -371,15 +372,15 @@ class VersionMapper:
 
     def map(self, source=None, destination=None):
         """
-        Map the eveH5 file contents to evedata structures.
+        Map the eveH5 file contents to evefile structures.
 
         Parameters
         ----------
-        source : :class:`evedata.evefile.boundaries.eveh5.HDF5File`
+        source : :class:`evefile.boundaries.eveh5.HDF5File`
             Python object representation of an eveH5 file
 
-        destination : :class:`evedata.evefile.boundaries.evefile.EveFile`
-            High(er)-level evedata structure representing an eveH5 file
+        destination : :class:`evefile.boundaries.evefile.EveFile`
+            High(er)-level evefile structure representing an eveH5 file
 
         Raises
         ------
@@ -411,11 +412,11 @@ class VersionMapper:
         As the :class:`VersionMapper` class deals with each HDF5 dataset
         individually, some fundamental settings for the
         :class:`HDF5DataImporter
-        <evedata.evefile.entities.data.HDF5DataImporter>` are readily
+        <evefile.entities.data.HDF5DataImporter>` are readily
         available. Additionally, the ``mapping`` parameter provides the
         information necessary to create the correct information in the
         :attr:`HDF5DataImporter.mapping
-        <evedata.evefile.entities.data.HDF5DataImporter.mapping>` attribute.
+        <evefile.entities.data.HDF5DataImporter.mapping>` attribute.
 
         .. important::
             The keys in the dictionary provided via the ``mapping``
@@ -436,13 +437,13 @@ class VersionMapper:
                 )
 
             Of course, in reality you will not just instantiate an empty
-            :obj:`HDF5Dataset <evedata.evefile.boundaries.eveh5.HDF5Dataset>`
+            :obj:`HDF5Dataset <evefile.boundaries.eveh5.HDF5Dataset>`
             object, but have one available within your mapper.
 
 
         Parameters
         ----------
-        dataset : :class:`evedata.evefile.boundaries.eveh5.HDF5Dataset`
+        dataset : :class:`evefile.boundaries.eveh5.HDF5Dataset`
             Representation of an HDF5 dataset.
 
         mapping : :class:`dict`
@@ -455,7 +456,7 @@ class VersionMapper:
 
         Returns
         -------
-        importer : :class:`evedata.evefile.entities.data.HDF5DataImporter`
+        importer : :class:`evefile.entities.data.HDF5DataImporter`
             HDF5 dataset importer
 
         """
@@ -478,25 +479,41 @@ class VersionMapper:
         pass
 
     def _map(self):
+        self._map_file_metadata()
+
+    def _map_file_metadata(self):
         pass
 
 
-class VersionMapperV7(VersionMapper):
+class VersionMapperV5(VersionMapper):
     """
-    Mapper for mapping eveH5 v7 file contents to evedata structures.
+    Mapper for mapping eveH5 v5 file contents to evefile structures.
 
-    The only difference to the previous version v6: the attribute
-    ``Simulation`` has beem added on the file root level and is mapped
-    as a Boolean value onto the :attr:`File.metadata.simulation
-    <evedata.evefile.entities.file.Metadata.simulation>` attribute.
+    More description comes here...
+
+    .. important::
+        EveH5 files of version v5 and earlier do *not* contain a date and
+        time for the end of the measurement. Hence, the corresponding
+        attribute :attr:`File.metadata.end
+        <evefile.entities.file.Metadata.end>` is set to the UNIX
+        start date (1970-01-01T00:00:00). Thus, with these files,
+        it is *not* possible to automatically calculate the duration of
+        the measurement.
+
+        Note, however, that using the :attr:`File.position_timestamps
+        <evefile.entities.file.File.position_timestamps>` attribute and
+        taking the timestamp for the last recorded position count,
+        one could infer the duration of the measurement, and hence set the
+        time for the end of the measurement.
+
 
     Attributes
     ----------
-    source : :class:`evedata.evefile.boundaries.eveh5.HDF5File`
+    source : :class:`evefile.boundaries.eveh5.HDF5File`
         Python object representation of an eveH5 file
 
-    destination : :class:`evedata.evefile.boundaries.evefile.File`
-        High(er)-level evedata structure representing an eveH5 file
+    destination : :class:`evefile.boundaries.evefile.File`
+        High(er)-level evefile structure representing an eveH5 file
 
     Raises
     ------
@@ -506,7 +523,157 @@ class VersionMapperV7(VersionMapper):
 
     Examples
     --------
-    Mapping a given eveH5 file to the evedata structures is the same for
+    Mapping a given eveH5 file to the evefile structures is the same for
+    each of the mappers:
+
+    .. code-block::
+
+        mapper = VersionMapperV5()
+        mapper.map(source=eveh5, destination=evefile)
+
+    Usually, you will obtain the correct mapper from the
+    :class:`VersionMapperFactory`. In this case, the returned mapper has
+    its :attr:`source` attribute already set for convenience:
+
+    .. code-block::
+
+        factory = VersionMapperFactory()
+        mapper = factory.get_mapper(eveh5=eveh5)
+        mapper.map(destination=evefile)
+
+    """
+
+    def _map_file_metadata(self):
+        root_mappings = {
+            "eveh5_version": "EVEH5Version",
+            "eve_version": "Version",
+            "xml_version": "XMLversion",
+            "measurement_station": "Location",
+            "description": "Comment",
+        }
+        for key, value in root_mappings.items():
+            if value in self.source.attributes:
+                setattr(
+                    self.destination.metadata,
+                    key,
+                    self.source.attributes[value],
+                )
+        c1_mappings = {
+            "preferred_axis": "preferredAxis",
+            "preferred_channel": "preferredChannel",
+            "preferred_normalisation_channel": "preferredNormalizationChannel",
+        }
+        for key, value in c1_mappings.items():
+            if value in self.source.c1.attributes:
+                setattr(
+                    self.destination.metadata,
+                    key,
+                    self.source.c1.attributes[value],
+                )
+        if "StartTimeISO" not in self.source.attributes:
+            self.destination.metadata.start = datetime.datetime.strptime(
+                f"{self.source.attributes['StartDate']} "
+                f"{self.source.attributes['StartTime']}",
+                "%d.%m.%Y %H:%M:%S",
+            )
+            self.destination.metadata.end = datetime.datetime(1970, 1, 1)
+
+
+class VersionMapperV6(VersionMapperV5):
+    """
+    Mapper for mapping eveH5 v6 file contents to evefile structures.
+
+    The only difference to the previous version v5: Times for start *and
+    now even end* of a measurement are available and are mapped
+    as :obj:`datetime.datetime` objects onto the
+    :attr:`File.metadata.start
+    <evefile.entities.file.Metadata.start>` and
+    :attr:`File.metadata.end <evefile.entities.file.Metadata.end>`
+    attributes, respectively.
+
+    .. note::
+        Previous to v6 eveH5 files, no end date/time of the measurement
+        was available, hence no duration of the measurement can be
+        calculated.
+
+    Attributes
+    ----------
+    source : :class:`evefile.boundaries.eveh5.HDF5File`
+        Python object representation of an eveH5 file
+
+    destination : :class:`evefile.boundaries.evefile.File`
+        High(er)-level evefile structure representing an eveH5 file
+
+    Raises
+    ------
+    ValueError
+        Raised if either source or destination are not provided
+
+
+    Examples
+    --------
+    Mapping a given eveH5 file to the evefile structures is the same for
+    each of the mappers:
+
+    .. code-block::
+
+        mapper = VersionMapperV6()
+        mapper.map(source=eveh5, destination=evefile)
+
+    Usually, you will obtain the correct mapper from the
+    :class:`VersionMapperFactory`. In this case, the returned mapper has
+    its :attr:`source` attribute already set for convenience:
+
+    .. code-block::
+
+        factory = VersionMapperFactory()
+        mapper = factory.get_mapper(eveh5=eveh5)
+        mapper.map(destination=evefile)
+
+    """
+
+    def _map_file_metadata(self):
+        super()._map_file_metadata()
+        date_mappings = {
+            "start": "StartTimeISO",
+            "end": "EndTimeISO",
+        }
+        for key, value in date_mappings.items():
+            setattr(
+                self.destination.metadata,
+                key,
+                datetime.datetime.fromisoformat(
+                    self.source.attributes[value]
+                ),
+            )
+
+
+class VersionMapperV7(VersionMapperV6):
+    """
+    Mapper for mapping eveH5 v7 file contents to evefile structures.
+
+    The only difference to the previous version v6: the attribute
+    ``Simulation`` has beem added on the file root level and is mapped
+    as a Boolean value onto the :attr:`File.metadata.simulation
+    <evefile.entities.file.Metadata.simulation>` attribute.
+
+    Attributes
+    ----------
+    source : :class:`evefile.boundaries.eveh5.HDF5File`
+        Python object representation of an eveH5 file
+
+    destination : :class:`evefile.boundaries.evefile.File`
+        High(er)-level evefile structure representing an eveH5 file
+
+    Raises
+    ------
+    ValueError
+        Raised if either source or destination are not provided
+
+
+    Examples
+    --------
+    Mapping a given eveH5 file to the evefile structures is the same for
     each of the mappers:
 
     .. code-block::
@@ -525,3 +692,8 @@ class VersionMapperV7(VersionMapper):
         mapper.map(destination=evefile)
 
     """
+
+    def _map_file_metadata(self):
+        super()._map_file_metadata()
+        if self.source.attributes["Simulation"] == "yes":
+            self.destination.metadata.simulation = True
