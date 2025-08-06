@@ -5,7 +5,7 @@ import unittest
 import h5py
 import numpy as np
 
-from evedata.evefile.boundaries import eveh5
+from evefile.boundaries import eveh5
 
 
 class DummyHDF5File:
