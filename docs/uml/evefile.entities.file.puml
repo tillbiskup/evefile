@@ -3,6 +3,7 @@
 class File {
     metadata : Metadata
     log_messages : LogMessage[]
+    data : Data{}
     snapshots : Data{}
     monitors : Data{}
     position_timestamps : TimestampData

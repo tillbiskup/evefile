@@ -64,6 +64,12 @@ class File:
 
         Each item in the list is an instance of :class:`LogMessage`.
 
+    data : :class:`dict`
+        Data recorded from the devices involved in the scan.
+
+        Each item is an instance of
+        :class:`evefile.entities.data.Data`.
+
     snapshots : :class:`dict`
         Device data recorded as snapshot during a measurement.
 

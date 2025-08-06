@@ -14,6 +14,7 @@ class TestFile(unittest.TestCase):
     def test_has_attributes(self):
         attributes = [
             "metadata",
+            "data",
             "log_messages",
             "snapshots",
             "monitors",

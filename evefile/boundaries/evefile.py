@@ -68,31 +68,8 @@ Loading the contents of a data file of a measurement may be as simple as:
 
 .. code-block::
 
-    from evefile.boundaries.evefile import EveFile
-
-    evefile = EveFile()
-    evefile.load(filename="my_measurement_file.h5")
-
-Of course, you could alternatively set the filename first,
-thus shortening the :meth:`load` method call:
-
-.. code-block::
-
-    evefile = EveFile()
-    evefile.filename = "my_measurement_file.h5"
-    evefile.load()
-
-There is even a third way now: Instantiating the class already with a
-given filename:
-
-.. code-block::
-
     evefile = EveFile(filename="my_measurement_file.h5")
     evefile.load()
-
-And yes, you can of course chain the object creation and loading the file
-if you like. However, this leads to harder to read code and is therefore
-*not* suggested.
 
 
 Internals: What happens when reading an eveH5 file?
@@ -152,6 +129,12 @@ class EveFile(File):
 
         Each item in the list is an instance of
         :class:`evefile.entities.file.LogMessage`.
+
+    data : :class:`dict`
+        Data recorded from the devices involved in the scan.
+
+        Each item is an instance of
+        :class:`evedata.evefile.entities.data.Data`.
 
     snapshots : :class:`dict`
         Device data recorded as snapshot during a measurement.
