@@ -482,4 +482,46 @@ class VersionMapper:
 
 
 class VersionMapperV7(VersionMapper):
-    pass
+    """
+    Mapper for mapping eveH5 v7 file contents to evedata structures.
+
+    The only difference to the previous version v6: the attribute
+    ``Simulation`` has beem added on the file root level and is mapped
+    as a Boolean value onto the :attr:`File.metadata.simulation
+    <evedata.evefile.entities.file.Metadata.simulation>` attribute.
+
+    Attributes
+    ----------
+    source : :class:`evedata.evefile.boundaries.eveh5.HDF5File`
+        Python object representation of an eveH5 file
+
+    destination : :class:`evedata.evefile.boundaries.evefile.File`
+        High(er)-level evedata structure representing an eveH5 file
+
+    Raises
+    ------
+    ValueError
+        Raised if either source or destination are not provided
+
+
+    Examples
+    --------
+    Mapping a given eveH5 file to the evedata structures is the same for
+    each of the mappers:
+
+    .. code-block::
+
+        mapper = VersionMapperV7()
+        mapper.map(source=eveh5, destination=evefile)
+
+    Usually, you will obtain the correct mapper from the
+    :class:`VersionMapperFactory`. In this case, the returned mapper has
+    its :attr:`source` attribute already set for convenience:
+
+    .. code-block::
+
+        factory = VersionMapperFactory()
+        mapper = factory.get_mapper(eveh5=eveh5)
+        mapper.map(destination=evefile)
+
+    """

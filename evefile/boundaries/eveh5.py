@@ -673,8 +673,7 @@ class HDF5Group(HDF5Item):
             Item of the group
 
         """
-        for item in self._items.values():
-            yield item
+        yield from self._items.values()
 
     def add_item(self, item):
         """
