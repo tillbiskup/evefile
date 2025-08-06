@@ -714,6 +714,9 @@ class TestVersionMapperV5(unittest.TestCase):
         if os.path.exists(self.source.filename):
             os.remove(self.source.filename)
 
+    def destination_data(self, name=""):
+        return self.destination.data[name]
+
     def test_instantiate_class(self):
         pass
 
@@ -1025,9 +1028,7 @@ class TestVersionMapperV5(unittest.TestCase):
         self.mapper.map(destination=self.destination)
         for dataset in datasets:
             h5_dataset = getattr(self.mapper.source.c1.main, dataset)
-            self.assertIn(
-                dataset, self.destination.scan_modules["main"].data.keys()
-            )
+            self.assertIn(dataset, self.destination.data.keys())
             self.assertIsInstance(
                 self.destination_data(dataset),
                 evefile.entities.data.SinglePointChannelData,
@@ -1085,9 +1086,7 @@ class TestVersionMapperV5(unittest.TestCase):
         dataset = "K0617:gw24126chan1"
         normalizing = "K0617:gw24126chan1__A2980:gw24103chan1"
         self.mapper.map(destination=self.destination)
-        self.assertIn(
-            dataset, self.destination.scan_modules["main"].data.keys()
-        )
+        self.assertIn(dataset, self.destination.data.keys())
         self.assertIsInstance(
             self.destination_data(dataset),
             evefile.entities.data.SinglePointNormalizedChannelData,
@@ -1144,9 +1143,7 @@ class TestVersionMapperV5(unittest.TestCase):
         )
         self.mapper.map(destination=self.destination)
         h5_dataset = getattr(self.mapper.source.c1.main, dataset)
-        self.assertIn(
-            dataset, self.destination.scan_modules["main"].data.keys()
-        )
+        self.assertIn(dataset, self.destination.data.keys())
         self.assertIsInstance(
             self.destination_data(dataset),
             evefile.entities.data.IntervalChannelData,
@@ -1232,9 +1229,7 @@ class TestVersionMapperV5(unittest.TestCase):
         )
         self.mapper.map(destination=self.destination)
         h5_dataset = getattr(self.mapper.source.c1.main.normalized, dataset)
-        self.assertIn(
-            dataset, self.destination.scan_modules["main"].data.keys()
-        )
+        self.assertIn(dataset, self.destination.data.keys())
         self.assertIsInstance(
             self.destination_data(dataset),
             evefile.entities.data.IntervalNormalizedChannelData,
@@ -1324,9 +1319,7 @@ class TestVersionMapperV5(unittest.TestCase):
         )
         self.mapper.map(destination=self.destination)
         h5_dataset = getattr(self.mapper.source.c1.main, dataset)
-        self.assertIn(
-            dataset, self.destination.scan_modules["main"].data.keys()
-        )
+        self.assertIn(dataset, self.destination.data.keys())
         self.assertIsInstance(
             self.destination_data(dataset),
             evefile.entities.data.AverageChannelData,
@@ -1457,9 +1450,7 @@ class TestVersionMapperV5(unittest.TestCase):
         self.mapper.map(destination=self.destination)
         h5_dataset = getattr(self.mapper.source.c1.main.normalized, dataset)
         dataset = dataset.split("__")[0]
-        self.assertIn(
-            dataset, self.destination.scan_modules["main"].data.keys()
-        )
+        self.assertIn(dataset, self.destination.data.keys())
         self.assertIsInstance(
             self.destination_data(dataset),
             evedata.evefile.entities.data.AverageNormalizedChannelData,

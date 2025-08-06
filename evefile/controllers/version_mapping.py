@@ -469,6 +469,53 @@ class VersionMapper:
             importer.mapping[dataset.dtype.names[key]] = value
         return importer
 
+    @staticmethod
+    def get_dataset_name(dataset=None):
+        """
+        Get the name of an HDF5 dataset.
+
+        The name here refers to the last part of the path within the HDF5
+        file, *i.e.* the part after the last slash.
+
+
+        Parameters
+        ----------
+        dataset : :class:`evedata.evefile.boundaries.eveh5.HDF5Dataset`
+            Representation of an HDF5 dataset.
+
+        Returns
+        -------
+        name : :class:`str`
+            Name of the HDF5 dataset
+
+        """
+        return dataset.name.rsplit("/", maxsplit=1)[1]
+
+    @staticmethod
+    def set_basic_metadata(hdf5_item=None, dataset=None):
+        """
+        Set the basic metadata of a dataset from an HDF5 item.
+
+        The metadata attributes ``id``, ``name``, ``access_mode``,
+        and ``pv`` are set.
+
+        Parameters
+        ----------
+        hdf5_item : :class:`evedata.evefile.boundaries.eveh5.HDF5Item`
+            Representation of an HDF5 item.
+
+        dataset : :class:`evedata.evefile.entities.data.Data`
+            Data object the metadata should be set for
+
+        """
+        dataset.metadata.id = hdf5_item.name.split("/")[-1]  # noqa
+        dataset.metadata.name = hdf5_item.attributes["Name"]
+        dataset.metadata.access_mode, dataset.metadata.pv = (  # noqa
+            hdf5_item.attributes
+        )["Access"].split(":", maxsplit=1)
+        if "Unit" in hdf5_item.attributes:
+            dataset.metadata.unit = hdf5_item.attributes["Unit"]
+
     def _check_prerequisites(self):
         if not self.source:
             raise ValueError("Missing source to map from.")
@@ -480,9 +527,99 @@ class VersionMapper:
 
     def _map(self):
         self._map_file_metadata()
+        # Note: The sequence of method calls can be crucial, as the mapper
+        #       contains a list of datasets still to be mapped, and each
+        #       mapped dataset is removed from this list.
+        self._map_timestamp_dataset()
+        self._map_monitor_datasets()
+        self._map_axis_datasets()
+        self._map_0d_datasets()
+        self._map_snapshot_datasets()
 
     def _map_file_metadata(self):
         pass
+
+    def _map_timestamp_dataset(self):
+        pass
+
+    def _map_monitor_datasets(self):
+        for name in self.datasets2map_in_monitor:
+            monitor = getattr(self._monitor_group, name)
+            dataset = entities.data.MonitorData()
+            importer_mapping = {
+                0: "milliseconds",
+                1: "data",
+            }
+            importer = self.get_hdf5_dataset_importer(
+                dataset=monitor, mapping=importer_mapping
+            )
+            dataset.importer.append(importer)
+            self.set_basic_metadata(hdf5_item=monitor, dataset=dataset)
+            self.destination.monitors[self.get_dataset_name(monitor)] = (
+                dataset
+            )
+
+    def _map_axis_datasets(self):
+        mapped_datasets = []
+        for name in self.datasets2map_in_main:
+            item = getattr(self._main_group, name)
+            if item.attributes["DeviceType"] == "Axis":
+                self._map_axis_dataset(hdf5_dataset=item)
+                mapped_datasets.append(self.get_dataset_name(item))
+        for item in mapped_datasets:
+            self.datasets2map_in_main.remove(item)
+
+    def _map_axis_dataset(self, hdf5_dataset=None, section="data"):
+        # TODO: Check whether axis has an encoder (how? mapping?)
+        dataset = entities.data.AxisData()
+        importer_mapping = {
+            0: "position_counts",
+            1: "data",
+        }
+        importer = self.get_hdf5_dataset_importer(
+            dataset=hdf5_dataset, mapping=importer_mapping
+        )
+        dataset.importer.append(importer)
+        self.set_basic_metadata(hdf5_item=hdf5_dataset, dataset=dataset)
+        self._assign_axis_dataset(dataset, hdf5_dataset, section)
+
+    def _assign_axis_dataset(
+        self, dataset=None, hdf5_dataset=None, section=""
+    ):
+        getattr(self.destination, section)[
+            self.get_dataset_name(hdf5_dataset)
+        ] = dataset
+
+    def _map_0d_datasets(self):
+        pass
+
+    def _map_snapshot_datasets(self):
+        mapped_datasets = []
+        for name in self.datasets2map_in_snapshot:
+            item = getattr(self._snapshot_group, name)
+            if item.attributes["DeviceType"] == "Axis":
+                self._map_axis_dataset(hdf5_dataset=item, section="snapshots")
+                mapped_datasets.append(self.get_dataset_name(item))
+            elif item.attributes["DeviceType"] == "Channel":
+                self._map_channel_snapshot_dataset(hdf5_dataset=item)
+                mapped_datasets.append(self.get_dataset_name(item))
+        for item in mapped_datasets:
+            self.datasets2map_in_snapshot.remove(item)
+
+    def _map_channel_snapshot_dataset(self, hdf5_dataset=None):
+        dataset = entities.data.AxisData()
+        importer_mapping = {
+            0: "position_counts",
+            1: "data",
+        }
+        importer = self.get_hdf5_dataset_importer(
+            dataset=hdf5_dataset, mapping=importer_mapping
+        )
+        dataset.importer.append(importer)
+        self.set_basic_metadata(hdf5_item=hdf5_dataset, dataset=dataset)
+        self.destination.snapshots[self.get_dataset_name(hdf5_dataset)] = (
+            dataset
+        )
 
 
 class VersionMapperV5(VersionMapper):
@@ -543,6 +680,37 @@ class VersionMapperV5(VersionMapper):
 
     """
 
+    def __init__(self):
+        super().__init__()
+        self._data = {}
+
+    def _set_dataset_names(self):
+        super()._set_dataset_names()
+        # TODO: Move up to VersionMapperV4
+        if hasattr(self.source.c1, "main"):
+            self._main_group = self.source.c1.main
+            self.datasets2map_in_main = [
+                self.get_dataset_name(item)
+                for item in self.source.c1.main
+                if self.get_dataset_name(item)
+                not in ["normalized", "averagemeta", "standarddev"]
+            ]
+        if hasattr(self.source.c1, "snapshot"):
+            self._snapshot_group = self.source.c1.snapshot
+            self.datasets2map_in_snapshot = [
+                self.get_dataset_name(item)
+                for item in self.source.c1.snapshot
+            ]
+        if hasattr(self.source, "device"):
+            self._monitor_group = self.source.device
+            self.datasets2map_in_monitor = [
+                self.get_dataset_name(item) for item in self._monitor_group
+            ]
+
+    def _map(self):
+        super()._map()
+        self._map_log_messages()
+
     def _map_file_metadata(self):
         root_mappings = {
             "eveh5_version": "EVEH5Version",
@@ -577,6 +745,291 @@ class VersionMapperV5(VersionMapper):
                 "%d.%m.%Y %H:%M:%S",
             )
             self.destination.metadata.end = datetime.datetime(1970, 1, 1)
+
+    def _map_timestamp_dataset(self):
+        # TODO: Move up to VersionMapperV2 (at least the earliest one)
+        timestampdata = self.source.c1.meta.PosCountTimer
+        dataset = entities.data.TimestampData()
+        importer_mapping = {
+            0: "position_counts",
+            1: "data",
+        }
+        importer = self.get_hdf5_dataset_importer(
+            dataset=timestampdata, mapping=importer_mapping
+        )
+        dataset.importer.append(importer)
+        dataset.metadata.unit = timestampdata.attributes["Unit"]
+        self.destination.position_timestamps = dataset
+
+    def _map_log_messages(self):
+        if not hasattr(self.source, "LiveComment"):
+            return
+        self.source.LiveComment.get_data()
+        for message in self.source.LiveComment.data:
+            log_message = entities.file.LogMessage()
+            log_message.from_string(message.decode())
+            self.destination.log_messages.append(log_message)
+
+    def _map_0d_datasets(self):
+        """
+        Mapping of 0D datasets.
+
+        There are three types of 0D datasets: SinglePoint, Interval,
+        Average. Each of these three types can additionally be normalized.
+
+        Usually, for normalized datasets the data used for normalizing are
+        available in the ``main`` group of the eveH5 file. Not so for
+        interval channel data, however: Here, the data used for
+        normalizing are *not* saved, *i.e.*, there is no corresponding
+        dataset in the ``main`` group of the eveH5 file. Therefore,
+        in this particular case, ``normalizing_data`` are *not* mapped.
+
+        """
+        datasets = list(self.datasets2map_in_main)
+        interval_datasets = [
+            item
+            for item in datasets
+            if getattr(self.source.c1.main, item).attributes["Detectortype"]
+            == "Interval"
+        ]
+        for hdf5_name in interval_datasets:
+            self._map_interval_dataset(hdf5_name=hdf5_name, normalized=False)
+            datasets.remove(hdf5_name)
+        average_datasets = []
+        if hasattr(self.source.c1.main, "averagemeta"):
+            average_datasets = {
+                item.name.split("__")[0].split("/")[-1]
+                for item in self.source.c1.main.averagemeta
+                if item.name.count("__") == 1
+            }
+        for hdf5_name in average_datasets:
+            self._map_average_dataset(hdf5_name=hdf5_name, normalized=False)
+            datasets.remove(hdf5_name)
+        normalized_datasets = []
+        if hasattr(self.source.c1.main, "normalized"):
+            normalized_datasets = [
+                self.get_dataset_name(item)
+                for item in self.source.c1.main.normalized
+            ]
+            normalized_interval_datasets = [
+                self.get_dataset_name(item)
+                for item in self.source.c1.main.normalized
+                if getattr(
+                    self.source.c1.main.normalized,
+                    self.get_dataset_name(item),
+                ).attributes["Detectortype"]
+                == "Interval"
+            ]
+            for hdf5_name in normalized_interval_datasets:
+                normalized_datasets.remove(hdf5_name)
+                self._map_interval_dataset(
+                    hdf5_name=hdf5_name, normalized=True
+                )
+            if hasattr(self.source.c1.main, "averagemeta"):
+                average_datasets = {
+                    item.name.split("__")[0].split("/")[-1]
+                    for item in self.source.c1.main.averagemeta
+                }
+            normalized_average_datasets = [
+                self.get_dataset_name(item)
+                for item in self.source.c1.main.normalized
+                if self.get_dataset_name(item).split("__")[0]
+                in average_datasets
+            ]
+            for hdf5_name in normalized_average_datasets:
+                normalized_datasets.remove(hdf5_name)
+                datasets.remove(hdf5_name.split("__")[0])
+                self._map_average_dataset(
+                    hdf5_name=hdf5_name, normalized=True
+                )
+        for hdf5_name in datasets:
+            self._map_singlepoint_dataset(hdf5_name, normalized_datasets)
+
+    def _map_singlepoint_dataset(
+        self, hdf5_name=None, normalized_datasets=None
+    ):
+        importer_mapping = {
+            0: "position_counts",
+            1: "data",
+        }
+        importer = self.get_hdf5_dataset_importer(
+            dataset=getattr(self.source.c1.main, hdf5_name),
+            mapping=importer_mapping,
+        )
+        normalize_data = [
+            item
+            for item in normalized_datasets
+            if item.startswith(f"{hdf5_name}__")
+        ]
+        if normalize_data:
+            dataset = entities.data.SinglePointNormalizedChannelData()
+            dataset.importer.append(importer)
+            importer_mapping = {
+                1: "normalized_data",
+            }
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(
+                    self.source.c1.main.normalized, normalize_data[0]
+                ),
+                mapping=importer_mapping,
+            )
+            dataset.importer.append(importer)
+            importer_mapping = {
+                1: "normalizing_data",
+            }
+            normalizing_data = normalize_data[0].split("__")[1]
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(self.source.c1.main, normalizing_data),
+                mapping=importer_mapping,
+            )
+            dataset.importer.append(importer)
+            dataset.metadata.normalize_id = normalizing_data
+        else:
+            dataset = entities.data.SinglePointChannelData()
+            dataset.importer.append(importer)
+        self.set_basic_metadata(
+            hdf5_item=getattr(self.source.c1.main, hdf5_name),
+            dataset=dataset,
+        )
+        self._data[hdf5_name] = dataset
+        self.datasets2map_in_main.remove(hdf5_name)
+
+    def _map_interval_dataset(self, hdf5_name=None, normalized=False):
+        importer_mapping = {
+            0: "position_counts",
+            1: "data",
+        }
+        if normalized:
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(self.source.c1.main.normalized, hdf5_name),
+                mapping=importer_mapping,
+            )
+            dataset = entities.data.IntervalNormalizedChannelData()
+        else:
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(self.source.c1.main, hdf5_name),
+                mapping=importer_mapping,
+            )
+            dataset = entities.data.IntervalChannelData()
+        dataset.importer.append(importer)
+        importer_mapping = {
+            1: "counts",
+        }
+        importer = self.get_hdf5_dataset_importer(
+            dataset=getattr(
+                self.source.c1.main.standarddev, f"{hdf5_name}__Count"
+            ),
+            mapping=importer_mapping,
+        )
+        dataset.importer.append(importer)
+        importer_mapping = {
+            2: "std",
+        }
+        trigger_interval_std = getattr(
+            self.source.c1.main.standarddev,
+            f"{hdf5_name}__TrigIntv-StdDev",
+        )
+        importer = self.get_hdf5_dataset_importer(
+            dataset=trigger_interval_std,
+            mapping=importer_mapping,
+        )
+        dataset.importer.append(importer)
+        dataset.metadata.trigger_interval = trigger_interval_std.data[
+            "TriggerIntv"
+        ][0]
+        if normalized:
+            importer_mapping = {
+                1: "normalized_data",
+            }
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(
+                    self.source.c1.main.normalized, f"{hdf5_name}"
+                ),
+                mapping=importer_mapping,
+            )
+            dataset.importer.append(importer)
+            self.set_basic_metadata(
+                hdf5_item=getattr(self.source.c1.main.normalized, hdf5_name),
+                dataset=dataset,
+            )
+        else:
+            self.set_basic_metadata(
+                hdf5_item=getattr(self.source.c1.main, hdf5_name),
+                dataset=dataset,
+            )
+            self.datasets2map_in_main.remove(hdf5_name)
+        self._data[hdf5_name] = dataset
+
+    def _map_average_dataset(self, hdf5_name=None, normalized=False):
+        if normalized:
+            basename = hdf5_name.split("__")[0]
+            dataset = entities.data.AverageNormalizedChannelData()
+        else:
+            basename = hdf5_name
+            dataset = entities.data.AverageChannelData()
+        importer_mapping = {
+            0: "position_counts",
+            1: "data",
+        }
+        importer = self.get_hdf5_dataset_importer(
+            dataset=getattr(self.source.c1.main, basename),
+            mapping=importer_mapping,
+        )
+        dataset.importer.append(importer)
+        if hasattr(self.source.c1.main.averagemeta, f"{hdf5_name}__Attempts"):
+            importer_mapping = {
+                1: "attempts",
+            }
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(
+                    self.source.c1.main.averagemeta, f"{hdf5_name}__Attempts"
+                ),
+                mapping=importer_mapping,
+            )
+            dataset.importer.append(importer)
+            dataset.metadata.max_attempts = getattr(
+                self.source.c1.main.averagemeta,
+                f"{hdf5_name}__Attempts",
+            ).data["MaxAttempts"][0]
+            dataset.metadata.low_limit = getattr(
+                self.source.c1.main.averagemeta,
+                f"{hdf5_name}__Limit-MaxDev",
+            ).data["Limit"][0]
+            dataset.metadata.max_deviation = getattr(
+                self.source.c1.main.averagemeta,
+                f"{hdf5_name}__Limit-MaxDev",
+            ).data["maxDeviation"][0]
+        if normalized:
+            importer_mapping = {
+                1: "normalized_data",
+            }
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(self.source.c1.main.normalized, hdf5_name),
+                mapping=importer_mapping,
+            )
+            dataset.importer.append(importer)
+            importer_mapping = {
+                1: "normalizing_data",
+            }
+            importer = self.get_hdf5_dataset_importer(
+                dataset=getattr(
+                    self.source.c1.main, hdf5_name.split("__")[1]
+                ),
+                mapping=importer_mapping,
+            )
+            dataset.importer.append(importer)
+        self.set_basic_metadata(
+            hdf5_item=getattr(self.source.c1.main, basename),
+            dataset=dataset,
+        )
+        dataset.metadata.n_averages = getattr(
+            self.source.c1.main.averagemeta,
+            f"{hdf5_name}__AverageCount",
+        ).data["AverageCount"][0]
+        self._data[basename] = dataset
+        self.datasets2map_in_main.remove(basename)
+        if hdf5_name in self.datasets2map_in_main:
+            self.datasets2map_in_main.remove(hdf5_name)
 
 
 class VersionMapperV6(VersionMapperV5):
