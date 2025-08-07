@@ -296,3 +296,6 @@ class LogMessage:
         timestamp, message = string.split(": ", maxsplit=1)
         self.timestamp = datetime.datetime.fromisoformat(timestamp)
         self.message = message
+
+    def __str__(self):
+        return f"{self.timestamp.isoformat()}: {self.message}"
