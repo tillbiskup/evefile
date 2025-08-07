@@ -123,7 +123,16 @@ some textual value such as "N/A" (not available) may be used.
 Join modes currently implemented
 ================================
 
-Currently, there is exactly no join mode implemented:
+Currently, there is exactly one join mode implemented:
+
+* :class:`AxesLastFill`
+
+  Inflate axes to data dimensions using last for missing value.
+
+  If no previous axes value is available, convert the data into a
+  :obj:`numpy.ma.MaskedArray` object and mask the value.
+
+  This mode is equivalent to the "LastFill" mode described above.
 
 
 For developers
@@ -150,8 +159,12 @@ Module documentation
 
 """
 
+import logging
+
 import numpy as np
 from numpy import ma
+
+logger = logging.getLogger(__name__)
 
 
 class Join:
@@ -194,7 +207,7 @@ class Join:
 
     Examples
     --------
-    Usually, joining takes place in the :meth:`set_data()
+    Usually, joining takes place in the :meth:`get_joined_data()
     <evefile.boundaries.evefile.EveFile.get_joined_data>`
     method.
 
