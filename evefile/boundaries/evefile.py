@@ -109,9 +109,9 @@ class EveFile(File):
     """
     High-level Python object representation of eveH5 file contents.
 
-    This class serves as facade to the entire :mod:`evefile`
-    subpackage and provides a rather high-level representation of the
-    contents of an individual eveH5 file.
+    This class serves as facade to the entire ``evefile`` package and provides
+    a rather high-level representation of the contents of an individual
+    eveH5 file.
 
     Individual measurements are saved in HDF5 files using a particular
     schema (eveH5). Besides file-level metadata, there are log messages
@@ -127,9 +127,9 @@ class EveFile(File):
     recorded, together with their timestamp (rather than position count).
 
     Values from axes contained in the "snapshot" section are used for data
-    joining, while all other values can be regarded as telemetry data for
-    the setup. All values from the "monitors" section are strictly
-    telemetry data for the setup.
+    joining, while all other values can be regarded as either options
+    of individual devices or telemetry data for the setup. All values from
+    the "monitors" section are strictly telemetry data for the setup.
 
 
     Attributes
@@ -146,6 +146,11 @@ class EveFile(File):
     data : :class:`dict`
         Data recorded from the devices involved in the scan.
 
+        The keys of the dictionary are the (guaranteed to be unique) HDF
+        dataset names, not the "given" names usually familiar to the users.
+        Use the :meth:`get_data` method to retrieve data objects by their
+        "given" name.
+
         Each item is an instance of
         :class:`evefile.entities.data.Data`.
 
@@ -155,14 +160,20 @@ class EveFile(File):
         Only those device data that are not options belonging to any of
         the devices in the :attr:`data` attribute are stored here.
 
+        The keys of the dictionary are the (guaranteed to be unique) HDF
+        dataset names, not the "given" names usually familiar to the users.
+
         Each item is an instance of
         :class:`evefile.entities.data.Data`.
 
     monitors : :class:`dict`
         Device data monitored during a measurement.
 
+        The keys of the dictionary are the (guaranteed to be unique) HDF
+        dataset names, not the "given" names usually familiar to the users.
+
         Each item is an instance of
-        :class:`evefile.entities.data.Data`.
+        :class:`evefile.entities.data.MonitorData`.
 
     position_timestamps : :class:`evefile.entities.data.TimestampData`
         Timestamps for each individual position.
@@ -247,3 +258,57 @@ class EveFile(File):
         mapper = mapper_factory.get_mapper(eveh5)
         mapper.map(source=eveh5, destination=self)
         eveh5.close()
+
+    def get_data(self, name=None):
+        """
+        Retrieve data objects by name.
+
+        While generally, you can get the data objects by accessing the
+        :attr:`data <evefile.entities.file.File.data>` attribute directly,
+        there, they are stored using their HDF5 dataset name as key.
+        Usually, however, data are accessed by their "given" name.
+
+        Parameters
+        ----------
+        name : :class:`str` | :class:`list`
+            Name or list of names of data to retrieve
+
+        Returns
+        -------
+        data : :class:`evefile.entities.data.Data` | :class:`list`
+            Data object(s) corresponding to the name(s).
+
+            In case of a list of data objects, each object is of type
+            :class:`evefile.entities.data.Data`.
+
+        """
+        data = []
+        names = {item.metadata.name: key for key, item in self.data.items()}
+        if isinstance(name, (list, tuple)):
+            for item in name:
+                data.append(self.data[names[item]])
+        else:
+            data.append(self.data[names[name]])
+        if len(data) == 1:
+            data = data[0]
+        return data
+
+    def get_data_names(self):
+        """
+        Retrieve "given" names of data objects.
+
+        Data are stored in the :attr:`data <evefile.entities.file.File.data>`
+        attribute using their HDF5 dataset name as key. Usually, however,
+        data are accessed by their "given" name.
+
+        This method returns a list of all "given" names of the datasets
+        stored in :attr:`data <evefile.entities.file.File.data>`.
+
+        Returns
+        -------
+        data : :class:`list`
+            List of names of the data object(s) in :attr:`data`.
+
+        """
+        names = [item.metadata.name for key, item in self.data.items()]
+        return names

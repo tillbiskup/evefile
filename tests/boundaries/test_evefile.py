@@ -110,3 +110,37 @@ class TestEveFile(unittest.TestCase):
         for key, value in root_mappings.items():
             with self.subTest(key=key, val=value):
                 self.assertEqual(getattr(self.evefile.metadata, key), value)
+
+    def test_get_data_returns_data_by_name(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile.load()
+        self.assertEqual(
+            self.evefile.data["SimMot:01"],
+            self.evefile.get_data("foo"),
+        )
+
+    def test_get_data_list_returns_data_by_name_as_array(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile.load()
+        self.assertEqual(
+            self.evefile.data["SimMot:01"],
+            self.evefile.get_data(["foo", "bar"])[0],
+        )
+
+    def test_data_have_correct_shape(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile.load()
+        self.assertEqual(5, len(self.evefile.data["SimChan:01"].data))
+        self.assertEqual(5, len(self.evefile.data["SimMot:01"].data))
+
+    def test_get_data_names(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile.load()
+        self.assertEqual(
+            [item.metadata.name for item in self.evefile.data.values()],
+            self.evefile.get_data_names(),
+        )
