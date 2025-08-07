@@ -218,6 +218,7 @@ class Metadata:
 
     def __str__(self):
         output = []
+        # Note: Attributes are listed manually here for explicit ordering
         attributes = [
             "filename",
             "eveh5_version",
