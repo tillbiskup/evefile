@@ -40,8 +40,8 @@ While the :mod:`evefile <evefile.boundaries.evefile>` module is the
 high-level interface (facade) of the ``evefile`` package,
 it is still, from a functional viewpoint, close to the actual eveH5 files,
 providing a faithful representation of all information contained in an eveH5
-(and SCML) file. Nevertheless, it is clearly an abstraction from the actual
-data files. Hence, the key characteristics of the module are:
+file. Nevertheless, it is clearly an abstraction from the actual data files.
+Hence, the key characteristics of the module are:
 
 * Stable interface to eveH5 files, regardless of their version.
 
@@ -69,7 +69,40 @@ Loading the contents of a data file of a measurement may be as simple as:
 .. code-block::
 
     evefile = EveFile(filename="my_measurement_file.h5")
-    evefile.load()
+
+If you are interested in a convenient overview of the metadata contained in
+the eveH5 file just loaded, try this:
+
+.. code-block::
+
+    print(evefile.metadata)
+
+This will output a human-readable summary of the file metadata. See
+the documentation of the :class:`Metadata <evefile.entities.file.Metadata>`
+class for details.
+
+Data are stored within a :class:`EveFile` object with their IDs rather than
+the "given" names users are familiar with. Hence, to get an overview of all
+the data(sets) contained in a file, use the :meth:`EveFile.get_data_names`
+method:
+
+.. code-block::
+
+    evefile.get_data_names()
+
+This will return a list of "given" data names.
+
+Similarly, if you know the "given" name of a dataset or a list of datasets,
+you can retrieve the corresponding :class:`Data <evefile.entities.data.Data>`
+objects by using the :meth:`EveFile.get_data` method:
+
+.. code-block::
+
+    # Get list of datasets by name
+    evefile.get_data(["name1", "name2"])
+
+    # Get single dataset by name
+    evefile.get_data("name")
 
 
 Internals: What happens when reading an eveH5 file?
@@ -96,6 +129,7 @@ Module documentation
 """
 
 import logging
+import os
 
 from evefile.entities.file import File
 from evefile.boundaries.eveh5 import HDF5File
@@ -192,8 +226,11 @@ class EveFile(File):
 
     Raises
     ------
-    exception
-        Short description when and why raised
+    ValueError
+        Raised if no filename is provided.
+
+    FileNotFoundError
+        Raised if provided file could not be found.
 
 
     Examples
@@ -203,30 +240,18 @@ class EveFile(File):
     .. code-block::
 
         evefile = EveFile(filename="my_measurement_file.h5")
-        evefile.load()
-
-
-    .. todo::
-        Shall the constructor be slightly changed, so that loading a file
-        becomes standard? May be more convenient for the users. To retain
-        testability, one could think of an additional parameter, like so:
-
-        .. code-block::
-
-            def __init__(self, filename="", load=True):
-                ...
-                if load:
-                    self.load()
-
-        This would just need an (anyway necessary) check for the filename
-        to be present in the :meth:`load` method.
-
 
     """
 
-    def __init__(self, filename=""):
+    def __init__(self, filename="", load=True):
         super().__init__()
         self.filename = filename
+        if load:
+            if not filename:
+                raise ValueError("No filename given")
+            if not os.path.exists(filename):
+                raise FileNotFoundError(f"File {filename} does not exist.")
+            self._read_and_map_eveh5_file()
 
     @property
     def filename(self):
@@ -244,10 +269,6 @@ class EveFile(File):
     @filename.setter
     def filename(self, filename=""):
         self.metadata.filename = filename
-
-    def load(self):
-        """Load contents of an eveH5 file containing data."""
-        self._read_and_map_eveh5_file()
 
     def _read_and_map_eveh5_file(self):
         eveh5 = HDF5File()

@@ -706,7 +706,7 @@ class TestVersionMapperV5(unittest.TestCase):
     def setUp(self):
         self.mapper = version_mapping.VersionMapperV5()
         self.source = MockEveH5v5()
-        self.destination = evefile.boundaries.evefile.EveFile()
+        self.destination = evefile.boundaries.evefile.EveFile(load=False)
         self.logger = logging.getLogger(name="evedata")
         self.logger.setLevel(logging.ERROR)
 
@@ -1609,7 +1609,7 @@ class TestVersionMapperV5(unittest.TestCase):
 class TestVersionMapperV6(unittest.TestCase):
     def setUp(self):
         self.mapper = version_mapping.VersionMapperV6()
-        self.destination = evefile.boundaries.evefile.EveFile()
+        self.destination = evefile.boundaries.evefile.EveFile(load=False)
 
     def test_instantiate_class(self):
         pass
@@ -1635,7 +1635,7 @@ class TestVersionMapperV7(unittest.TestCase):
     def setUp(self):
         self.mapper = version_mapping.VersionMapperV7()
         self.source = MockEveH5()
-        self.destination = evefile.boundaries.evefile.EveFile()
+        self.destination = evefile.boundaries.evefile.EveFile(load=False)
 
     def tearDown(self):
         if os.path.exists(self.source.filename):

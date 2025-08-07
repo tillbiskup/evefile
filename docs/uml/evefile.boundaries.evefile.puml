@@ -2,8 +2,9 @@
 'https://plantuml.com/class-diagram
 
 class EveFile extends evefile.entities.file.File {
-    load()
     get_data()
+    get_data_names()
+    get_joined_data()
 }
 
 @enduml

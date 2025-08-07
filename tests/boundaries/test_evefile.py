@@ -66,14 +66,14 @@ class DummyHDF5File:
 class TestEveFile(unittest.TestCase):
     def setUp(self):
         self.filename = "file.h5"
-        self.evefile = evefile.EveFile(filename=self.filename)
+        self.evefile = evefile.EveFile(filename=self.filename, load=False)
 
     def tearDown(self):
         if os.path.exists(self.filename):
             os.remove(self.filename)
 
     def test_instantiate_class(self):
-        pass
+        evefile.EveFile(load=False)
 
     def test_has_attributes(self):
         attributes = [
@@ -96,13 +96,24 @@ class TestEveFile(unittest.TestCase):
 
     def test_init_with_filename_sets_metadata_filename(self):
         filename = "foobar.h5"
-        file = evefile.EveFile(filename=filename)
+        file = evefile.EveFile(filename=filename, load=False)
         self.assertEqual(filename, file.metadata.filename)
+
+    def test_init_with_load_and_missing_filename_raises(self):
+        with self.assertRaisesRegex(ValueError, "No filename given"):
+            evefile.EveFile(filename="", load=True)
+
+    def test_init_with_load_and_nonexisting_file_raises(self):
+        filename = "nonexisting.h5"
+        with self.assertRaisesRegex(
+            FileNotFoundError, f"File {filename} does " f"not " f"exist."
+        ):
+            evefile.EveFile(filename=filename, load=True)
 
     def test_load_sets_file_metadata(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
-        self.evefile.load()
+        self.evefile = evefile.EveFile(filename=self.filename)
         root_mappings = {
             "eveh5_version": "7",
             "measurement_station": "Unittest",
@@ -114,7 +125,7 @@ class TestEveFile(unittest.TestCase):
     def test_get_data_returns_data_by_name(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
-        self.evefile.load()
+        self.evefile = evefile.EveFile(filename=self.filename)
         self.assertEqual(
             self.evefile.data["SimMot:01"],
             self.evefile.get_data("foo"),
@@ -123,7 +134,7 @@ class TestEveFile(unittest.TestCase):
     def test_get_data_list_returns_data_by_name_as_array(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
-        self.evefile.load()
+        self.evefile = evefile.EveFile(filename=self.filename)
         self.assertEqual(
             self.evefile.data["SimMot:01"],
             self.evefile.get_data(["foo", "bar"])[0],
@@ -132,14 +143,14 @@ class TestEveFile(unittest.TestCase):
     def test_data_have_correct_shape(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
-        self.evefile.load()
+        self.evefile = evefile.EveFile(filename=self.filename)
         self.assertEqual(5, len(self.evefile.data["SimChan:01"].data))
         self.assertEqual(5, len(self.evefile.data["SimMot:01"].data))
 
     def test_get_data_names(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
-        self.evefile.load()
+        self.evefile = evefile.EveFile(filename=self.filename)
         self.assertEqual(
             [item.metadata.name for item in self.evefile.data.values()],
             self.evefile.get_data_names(),
