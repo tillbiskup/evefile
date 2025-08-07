@@ -8,7 +8,7 @@ Welcome! This is evefile, a Python package for **importing (synchrotron) radiome
 
 
 .. note::
-    This is a *transitional* package meant to be used only until the `evedata package <https://evedata.docs.radiometry.de/>`_ is considered sufficiently stable for routine use. It provides a rather low-level interface to the eveH5 data files, lacking all the abstractions available within evedata.
+    This is a *transitional* package meant to be used only until the `evedata package <https://evedata.docs.radiometry.de/>`_ is considered sufficiently stable for routine use. It provides a rather low-level interface to the eveH5 data files, lacking many of the abstractions available within evedata. See :doc:`differences` for more details.
 
 
 Features
@@ -77,6 +77,8 @@ This program is free software: you can redistribute it and/or modify it under th
    :hidden:
 
    audience
+   concepts
+   differences
    usecases
    installing
 

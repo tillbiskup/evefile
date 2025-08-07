@@ -70,19 +70,19 @@ Mapping tasks for eveH5 schema
 What follows is a summary of the different aspects, for the time being
 *not* divided for the different formats (up to v7):
 
-* Map attributes of ``/`` and ``/c1`` to the file metadata. |cross|
+* Map attributes of ``/`` and ``/c1`` to the file metadata. |check|
 * Convert monitor datasets from the ``device`` group to :obj:`MonitorData
-  <evefile.entities.data.MonitorData>` objects. |cross|
+  <evefile.entities.data.MonitorData>` objects. |check|
 
   * We probably need to create subclasses for the different monitor
     datasets, at least distinguishing between numeric and non-numeric
     values.
 
 * Map ``/c1/meta/PosCountTimer`` to :obj:`TimestampData
-  <evefile.entities.data.TimestampData>` object. |cross|
+  <evefile.entities.data.TimestampData>` object. |check|
 
 * Starting with eveH5 v5: Map ``/LiveComment`` to :obj:`LogMessage
-  <evefile.entities.file.LogMessage>` objects. |cross|
+  <evefile.entities.file.LogMessage>` objects. |check|
 
 * Filter all datasets from the ``main`` section, with different goals:
 
@@ -94,7 +94,7 @@ What follows is a summary of the different aspects, for the time being
     * Map additional datasets in main section (and snapshot). |cross|
 
   * Map all axis datasets to :obj:`AxisData
-    <evefile.entities.data.AxisData>` objects. |cross|
+    <evefile.entities.data.AxisData>` objects. |check|
 
     * How to distinguish between axes with and without encoders? |cross|
     * Read channels with RBV and replace axis values with RBV. |cross|
@@ -132,10 +132,10 @@ What follows is a summary of the different aspects, for the time being
     <evefile.entities.data.AverageChannelData>` and
     :obj:`IntervalChannelData
     <evefile.entities.data.IntervalChannelData>` objects,
-    respectively. |cross|
+    respectively. |check|
   * Map normalized channel data (and the data provided in the
     respective HDF5 groups) to :obj:`NormalizedChannelData
-    <evefile.entities.data.NormalizedChannelData>`. |cross|
+    <evefile.entities.data.NormalizedChannelData>`. |check|
   * Add all data objects to the :attr:`data
     <evefile.boundaries.evefile.EveFile.data>` attribute of the
     :obj:`EveFile <evefile.boundaries.evefile.EveFile>` object.
