@@ -12,6 +12,8 @@ evefile.controllers subpackage
     :maxdepth: 1
 
     evefile.controllers.joining
+    evefile.controllers.timestamp_mapping
     evefile.controllers.version_mapping
+
 
 
