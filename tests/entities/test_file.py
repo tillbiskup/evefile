@@ -1,4 +1,6 @@
+import contextlib
 import datetime
+from io import StringIO
 import unittest
 
 from evefile.entities import file
@@ -50,6 +52,17 @@ class TestMetadata(unittest.TestCase):
         for attribute in attributes:
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item for item in dir(self.metadata) if not item.startswith("_")
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
 
 
 class TestLogMessage(unittest.TestCase):

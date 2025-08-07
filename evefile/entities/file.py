@@ -172,6 +172,34 @@ class Metadata:
     Hence, for the time being, there are no dedicated examples how to use
     this class. Of course, you can instantiate an object as usual.
 
+    Nevertheless, as you may use the class indirectly, one important feature
+    should be highlighted here: the string representation used if you just
+    apply :func:`print` to an object of the class:
+
+    .. code-block::
+
+        print(Metadata())
+
+    The output of an (empty) object would look as follows:
+
+    .. code-block:: bash
+
+                               filename:
+                          eveh5_version:
+                            eve_version:
+                            xml_version:
+                    measurement_station:
+                                  start: 2025-08-07 10:57:16.849298
+                                    end: 2025-08-07 10:57:16.849307
+                            description:
+                             simulation: False
+                         preferred_axis:
+                      preferred_channel:
+        preferred_normalisation_channel:
+
+    This can be used to get a convenient overview of the metadata contained
+    in a loaded eveH5 file.
+
     """
 
     def __init__(self):
@@ -187,6 +215,32 @@ class Metadata:
         self.preferred_axis = ""
         self.preferred_channel = ""
         self.preferred_normalisation_channel = ""
+
+    def __str__(self):
+        output = []
+        attributes = [
+            "filename",
+            "eveh5_version",
+            "eve_version",
+            "xml_version",
+            "measurement_station",
+            "start",
+            "end",
+            "description",
+            "simulation",
+            "preferred_axis",
+            "preferred_channel",
+            "preferred_normalisation_channel",
+        ]
+        attribute_name_length = max(
+            [len(attribute) for attribute in attributes]
+        )
+        for attribute in attributes:
+            output.append(
+                f"{attribute:>{attribute_name_length}}:"
+                f" {getattr(self, attribute)}"
+            )
+        return "\n".join(output)
 
 
 class LogMessage:
