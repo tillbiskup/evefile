@@ -1605,6 +1605,10 @@ class TestVersionMapperV5(unittest.TestCase):
         for dataset in datasets:
             self.assertNotIn(dataset, self.mapper.datasets2map_in_snapshot)
 
+    def test_map_without_main_group(self):
+        self.mapper.source = MockEveH5()
+        self.mapper.map(destination=self.destination)
+
 
 class TestVersionMapperV6(unittest.TestCase):
     def setUp(self):

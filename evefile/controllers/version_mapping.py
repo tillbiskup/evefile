@@ -795,7 +795,9 @@ class VersionMapperV5(VersionMapper):
             self._map_interval_dataset(hdf5_name=hdf5_name, normalized=False)
             datasets.remove(hdf5_name)
         average_datasets = []
-        if hasattr(self.source.c1.main, "averagemeta"):
+        if hasattr(self.source.c1, "main") and hasattr(
+            self.source.c1.main, "averagemeta"
+        ):
             average_datasets = {
                 item.name.split("__")[0].split("/")[-1]
                 for item in self.source.c1.main.averagemeta
@@ -805,7 +807,9 @@ class VersionMapperV5(VersionMapper):
             self._map_average_dataset(hdf5_name=hdf5_name, normalized=False)
             datasets.remove(hdf5_name)
         normalized_datasets = []
-        if hasattr(self.source.c1.main, "normalized"):
+        if hasattr(self.source.c1, "main") and hasattr(
+            self.source.c1.main, "normalized"
+        ):
             normalized_datasets = [
                 self.get_dataset_name(item)
                 for item in self.source.c1.main.normalized
