@@ -345,3 +345,46 @@ class EveFile(File):
         """
         names = [item.metadata.name for key, item in self.data.items()]
         return names
+
+    def get_preferred_data(self):
+        """
+        Retrieve data objects marked as preferred.
+
+        Within a scan, a preferred motor axis, a preferred detector
+        channel, and a preferred channel for normalisation can be
+        named explicitly. The preferred axis and channel are used for
+        plotting within the eve GUI during measurement.
+
+        .. note::
+
+            The datasets returned are guaranteed to be commensurate
+            and compatible and can hence directly be plotted against each
+            other. This is due to the fact that preferred axis and channel
+            currently must come from the same scan module of a scan.
+
+        Returns
+        -------
+        data : :class:`list`
+            Data objects corresponding to the preference settings.
+
+            A list with three elements:
+
+            #. preferred axis
+            #. preferred channel
+            #. preferred normalisation channel
+
+            If the preference has been set in the scan description,
+            the item in the list is of type
+            :class:`evefile.entities.data.Data`, otherwise :obj:`None`.
+
+        """
+        output = [None, None, None]
+        if self.metadata.preferred_axis:
+            output[0] = self.data[self.metadata.preferred_axis]
+        if self.metadata.preferred_channel:
+            output[1] = self.data[self.metadata.preferred_channel]
+        if self.metadata.preferred_normalisation_channel:
+            output[2] = self.data[
+                self.metadata.preferred_normalisation_channel
+            ]
+        return output
