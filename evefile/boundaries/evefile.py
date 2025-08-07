@@ -104,6 +104,18 @@ objects by using the :meth:`EveFile.get_data` method:
     # Get single dataset by name
     evefile.get_data("name")
 
+To get the data marked as preferred in the scan, use the
+:meth:`EveFile.get_preferred_data` method:
+
+.. code-block::
+
+    evefile.get_preferred_data()
+
+This will return a list with three elements, ``[preferred_axis,
+preferred_channel, preferred_normalisation_channel]``, where each of these
+elements is either of type :class:`evefile.entities.data.Data` or
+:obj:`None`.
+
 
 Internals: What happens when reading an eveH5 file?
 ===================================================

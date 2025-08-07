@@ -5,6 +5,8 @@ class EveFile extends evefile.entities.file.File {
     get_data()
     get_data_names()
     get_joined_data()
+    get_preferred_data()
+    get_data_frame()
 }
 
 @enduml
