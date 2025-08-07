@@ -682,7 +682,6 @@ class VersionMapperV5(VersionMapper):
 
     def __init__(self):
         super().__init__()
-        self._data = {}
 
     def _set_dataset_names(self):
         super()._set_dataset_names()
@@ -891,7 +890,7 @@ class VersionMapperV5(VersionMapper):
             hdf5_item=getattr(self.source.c1.main, hdf5_name),
             dataset=dataset,
         )
-        self._data[hdf5_name] = dataset
+        self.destination.data[hdf5_name] = dataset
         self.datasets2map_in_main.remove(hdf5_name)
 
     def _map_interval_dataset(self, hdf5_name=None, normalized=False):
@@ -958,7 +957,7 @@ class VersionMapperV5(VersionMapper):
                 dataset=dataset,
             )
             self.datasets2map_in_main.remove(hdf5_name)
-        self._data[hdf5_name] = dataset
+        self.destination.data[hdf5_name] = dataset
 
     def _map_average_dataset(self, hdf5_name=None, normalized=False):
         if normalized:
@@ -1026,7 +1025,7 @@ class VersionMapperV5(VersionMapper):
             self.source.c1.main.averagemeta,
             f"{hdf5_name}__AverageCount",
         ).data["AverageCount"][0]
-        self._data[basename] = dataset
+        self.destination.data[basename] = dataset
         self.datasets2map_in_main.remove(basename)
         if hdf5_name in self.datasets2map_in_main:
             self.datasets2map_in_main.remove(hdf5_name)

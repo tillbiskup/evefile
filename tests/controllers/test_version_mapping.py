@@ -1453,7 +1453,7 @@ class TestVersionMapperV5(unittest.TestCase):
         self.assertIn(dataset, self.destination.data.keys())
         self.assertIsInstance(
             self.destination_data(dataset),
-            evedata.evefile.entities.data.AverageNormalizedChannelData,
+            evefile.entities.data.AverageNormalizedChannelData,
         )
         self.assertEqual(
             dataset,
