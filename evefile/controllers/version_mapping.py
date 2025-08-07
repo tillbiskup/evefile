@@ -680,9 +680,6 @@ class VersionMapperV5(VersionMapper):
 
     """
 
-    def __init__(self):
-        super().__init__()
-
     def _set_dataset_names(self):
         super()._set_dataset_names()
         # TODO: Move up to VersionMapperV4

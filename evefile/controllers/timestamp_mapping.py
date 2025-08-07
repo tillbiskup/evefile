@@ -1,7 +1,6 @@
 """
 *Mapping time stamps of monitors to position counts.*
 
-
 .. admonition:: Points to discuss further (without claiming to be complete)
 
     * Mapping MonitorData to MeasureData
