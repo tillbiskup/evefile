@@ -65,6 +65,24 @@ LastNaNFill
     values of the join operation by ``NaN``.
 
 
+Besides using analogies from the SQL world, relational algebra is another
+way of making the different join modi explicit. From the documentation of
+``EveFile`` implemented in IDL by Marcus Michalsky:
+
+    Depending on the given fill option certain data will not be present in
+    the result. Let ``A`` be the set union of positions of all given axes
+    and ``C`` the set union of positions of all given channels. Then the
+    resulting position list will be as follows:
+
+    .. code-block::
+
+        'NoFill':      A ^ C (Intersection)
+        'LastFill':    C
+        'NaNFill':     A
+        'LastNaNFill': A v C (set union)
+
+
+
 Furthermore, for the Last*Fill modes, snapshots are inspected for axes
 values that are newer than the last recorded axis in the main/standard
 section or for initial axis values if an axis has not been set in the
