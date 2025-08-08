@@ -46,7 +46,7 @@ LastFill
 
     Similar to an ``SQL LEFT JOIN`` with data left and axes right,
     but additionally explicitly setting the missing axes values in the join
-    to the last known axis value.
+    to the last known axis value (or NaN if no last known axis value exists).
 
 NaNFill
     "Use all axis data and fill in NaN for all channels without values."
@@ -60,15 +60,29 @@ LastNaNFill
     in the last known position for all axes without values."
 
     Similar to an ``SQL OUTER JOIN``, but additionally explicitly setting
-    the missing axes values in the join to the last known axis value and
-    replacing the ``NULL`` values of the join operation by ``NaN``.
+    the missing axes values in the join to the last known axis value (or
+    NaN if no last known axis value exists) and replacing the ``NULL``
+    values of the join operation by ``NaN``.
 
 
 Furthermore, for the Last*Fill modes, snapshots are inspected for axes
-values that are newer than the last recorded axis in the main/standard section.
+values that are newer than the last recorded axis in the main/standard
+section or for initial axis values if an axis has not been set in the
+main/standard section yet.
 
-Note that **none of the fill modes guarantees that there are no NaNs** (or
-comparable null values) in the resulting data.
+
+.. note::
+
+    Note that **none of the fill modes guarantees that there are no NaNs**
+    (or comparable null values) in the resulting data.
+
+
+.. note::
+
+    The concept of ``NaN`` is, strictly speaking, only defined for floats,
+    not for other numeric types and not for strings. Hence, the previous
+    mentioning of ``NaN`` is not entirely correct. See the section
+    ":ref:`sec-missing_values`" below for further details.
 
 
 .. important::
@@ -83,14 +97,17 @@ comparable null values) in the resulting data.
     modes are used in practice (and do we have any chance to find this out)?
 
 
-.. admonition:: Things to be discussed
+.. note::
 
-    Currently, there seems to be some confusion whether snapshot positions
-    are included in the ``NaNFill`` and ``LastNaNFill`` modes. Of course,
-    snapshot *data* should be used for all fill modes except ``NoFill``.
-    But it does not seem to make much sense to incorporate the snapshot
-    *positions* into the joined data array.
+    Snapshot *positions* are never included in any joined array.
+    Of course, snapshot *data* should be used for all fill modes except
+    ``NoFill`` and ``NaNFill``. But it does not seem to make much sense to
+    incorporate the snapshot *positions* into the joined data array.
 
+    It may be the case with legacy interfaces, though, that including the
+    PosCountTimer dataset results in a data array with all available
+    position counts. This should be considered a bug, however, rather than
+    a feature.
 
 
 Different scenarios for data joining
@@ -106,6 +123,10 @@ implement the second:
    axes vectors. Hence, we need only to deal with a 1..n relationship of data
    to axes.
 
+   However, in this case, "axes" and "data" have different meanings as
+   compared to motor axes and detector channels usually discussed. *I.e.*,
+   axes and data can be both, motor axes and detector channels, respectively.
+
 #. Creating the "all-knowing table"
 
    An arbitrary set of channels and axes (and monitors) should be joined
@@ -119,6 +140,8 @@ These two different scenarios may eventually result in having two
 layer, and one in the ``evefile`` functional layer, identical with the one
 developed here in ``evefile``.
 
+
+.. _sec-missing_values:
 
 How to deal with missing values?
 ================================
