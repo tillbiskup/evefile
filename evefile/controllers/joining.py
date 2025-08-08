@@ -125,7 +125,11 @@ main/standard section yet.
     It may be the case with legacy interfaces, though, that including the
     PosCountTimer dataset results in a data array with all available
     position counts. This should be considered a bug, however, rather than
-    a feature.
+    a feature for most use cases. In context of one big table for all data
+    recorded (including axes positions, channel readouts, options set,
+    and parameters monitored), it might be the only sensible chance to get
+    hand of the information contained in snapshots, however. Nevertheless,
+    this would be something ``evefile`` should not be concerned about.
 
 
 Different scenarios for data joining
@@ -197,6 +201,68 @@ some textual value such as "N/A" (not available) may be used.
     Otherwise, the masked values are in most cases simply ignored. For an
     overview of the default fill values of masked arrays, see the
     :attr:`numpy.ma.MaskedArray.fill_value` attribute.
+
+
+How to deal with monitor data?
+==============================
+
+To the best of the knowledge of this package's author, monitor data have
+never been considered for data joining, as they would first need to be
+mapped to position counts before joining. However, given that a mapping of
+timestamps to position counts exists (see the :mod:`timestamp_mapping
+<evefile.controllers.timestamp_mapping>` module), this finally needs to be
+considered.
+
+Monitors are somewhat special, as values are recorded for each change,
+together with a timestamp. Furthermore, there should *always* be a reference
+value recorded at the beginning of the scan (actually as soon as the scan
+is loaded into the engine, and if there are further changes in the
+monitored value before the scan execution starts, currently multiple
+values with the identical timestamp of "-1" are recorded, meaning that the
+last of these values should be used, see the discussion in the
+:mod:`timestamp_mapping <evefile.controllers.timestamp_mapping>` module
+for further details).
+
+If monitor data should appear in a joined data array, it seems most
+sensible to inflate the values to all position counts eventually in the
+data array, but to not consider the position counts of the (mapped)
+monitor datasets for determining which position counts to use for the
+joined data array. This would be kind of a "LastFill" (in the terminology
+discussed above) for the monitor data using the position counts of the
+final joined data array previously determined for all the other datasets
+(that in turn depend on the join mode, of course).
+
+
+A few comments for further development
+======================================
+
+.. important::
+
+    The classes implemented in this module are currently (2025/08/08) a
+    direct copy of the corresponding module in `evedata`_, and here
+    particularly from the "measurement" functional layer. However,
+    the needs in ``evefile`` are different, hence even the basic
+    :class:`Join` class needs to be redesigned. Further information below.
+    Once this has been done, this entire section should be removed.
+
+
+* Joining should take a list of data objects (or their names - both should
+  be possible) as input and return a list of data objects with their data
+  being commensurate.
+
+* Joining needs to work on an arbitrary number of data objects.
+  Internally, of course, they need to be distinguished between channel,
+  axis, and monitor, and handled accordingly. However, this amounts to
+  just one imput argument for the :meth:`Join.join` method (a list).
+
+* As detailed for the IDL implementation of EveFile, in a first step the
+  list of position counts of the final joined array needs to be
+  determined, before dealing with the actual data values.
+
+* Joining should probably take into account all available attributes,
+  not only ``data``, but options as well if present. This of course only
+  applies to ``evefile`` if options of devices are mapped to the
+  respective data objects.
 
 
 Join modes currently implemented
