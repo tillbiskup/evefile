@@ -64,12 +64,26 @@ data of a monitor:
   last (newest) with the special timestamp ``-1``. See `#7688, note 10
   <https://redmine.ahf.ptb.de/issues/7688#note-10>`_ for details.
 
+  For future developments of the measurement engine, it may be sensible to
+  record timestamps for the monitor data in actual timestamps rather than
+  milliseconds after the start of the scan (and in turn include actual
+  timestamps in the PosCountTimer dataset as well). As monitor data will be
+  recorded starting with a scan loaded into the engine, this would allow
+  for using these data for actual telemetry of the conditions of the
+  setup/beamline/machine.
+
 * Multiple (identical) values with identical timestamp
 
   Not clear whether this situation can actually occur, but if so,
   most probably in this case only one value should be contained in the data.
   See `#7688, note 11 <https://redmine.ahf.ptb.de/issues/7688#note-11>`_ for
   details.
+
+* Ignoring snapshot position counts
+
+  It does not make sense to map monitor data to position counts of
+  snapshots, as those position counts should *not* show up in any data
+  array.
 
 Furthermore, a requirement is that the original monitor data are retained
 when converting timestamps to position counts. This most probably means to
