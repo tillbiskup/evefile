@@ -1,4 +1,5 @@
 """
+.. _evedata: https://evedata.docs.radiometry.de/
 
 *Ensure data and axes values are commensurate and compatible.*
 
@@ -66,7 +67,7 @@ LastNaNFill
 Furthermore, for the Last*Fill modes, snapshots are inspected for axes
 values that are newer than the last recorded axis in the main/standard section.
 
-Note that none of the fill modes guarantees that there are no NaNs (or
+Note that **none of the fill modes guarantees that there are no NaNs** (or
 comparable null values) in the resulting data.
 
 
@@ -80,6 +81,43 @@ comparable null values) in the resulting data.
 
     Shall fill modes be something to change in a viewer? And which fill
     modes are used in practice (and do we have any chance to find this out)?
+
+
+.. admonition:: Things to be discussed
+
+    Currently, there seems to be some confusion whether snapshot positions
+    are included in the ``NaNFill`` and ``LastNaNFill`` modes. Of course,
+    snapshot *data* should be used for all fill modes except ``NoFill``.
+    But it does not seem to make much sense to incorporate the snapshot
+    *positions* into the joined data array.
+
+
+
+Different scenarios for data joining
+====================================
+
+There are basically two different scenarios, and currently, `evedata`_
+implements only the first, while ``evefile`` will most probably need to
+implement the second:
+
+#. Plotting data
+
+   In this case, there is always one data vector, but several possible
+   axes vectors. Hence, we need only to deal with a 1..n relationship of data
+   to axes.
+
+#. Creating the "all-knowing table"
+
+   An arbitrary set of channels and axes (and monitors) should be joined
+   in one single table for an easy overview and simple access. Besides the
+   known problems of this approach (the data model underlying the
+   measurements simply does not allow to be represented as a 2D table),
+   it is and remains a known and important use case.
+
+These two different scenarios may eventually result in having two
+``joining`` modules in `evedata`_, one in the ``measurement`` functional
+layer, and one in the ``evefile`` functional layer, identical with the one
+developed here in ``evefile``.
 
 
 How to deal with missing values?
@@ -193,16 +231,16 @@ class Join:
     Attributes
     ----------
     evefile : :class:`evefile.boundaries.evefile.EveFile`
-        EveFile the Join should be performed for.
+        EveFile object the Join should be performed for.
 
         Although joining is carried out for a small subset of the
-        device data of a evefile, additional information from the
-        evefile may be necessary to perform the task.
+        data of an EveFile object, additional information from the
+        EveFile object may be necessary to perform the task.
 
     Parameters
     ----------
     evefile : :class:`evefile.boundaries.evefile.EveFile`
-        EveFile the join should be performed for.
+        EveFile object the join should be performed for.
 
 
     Examples
@@ -343,11 +381,11 @@ class AxesLastFill(Join):
     Attributes
     ----------
     evefile : :class:`evefile.boundaries.evefile.EveFile`
-        EveFile the join should be performed for.
+        EveFile object the join should be performed for.
 
         Although joining is carried out for a small subset of the
-        device data of a evefile, additional information from the
-        evefile may be necessary to perform the task, *e.g.*,
+        data of an EveFile object, additional information from the
+        EveFile object may be necessary to perform the task, *e.g.*,
         the snapshots.
 
     Parameters
