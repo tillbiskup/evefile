@@ -131,8 +131,8 @@ steps are necessary:
 * Read the eveH5 file (actually, an HDF5 file).
 * Get the correct :class:`VersionMapper
   <evefile.controllers.version_mapping.VersionMapper>` class.
-* Map the file contents to the proper data structures provided by the
-  ``evefile`` package.
+* Map the file contents to the proper :mod:`data structures
+  <evefile.entities.data>` provided by the ``evefile`` package.
 
 
 Module documentation
