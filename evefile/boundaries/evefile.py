@@ -375,7 +375,8 @@ class EveFile(File):
 
             If the preference has been set in the scan description,
             the item in the list is of type
-            :class:`evefile.entities.data.Data`, otherwise :obj:`None`.
+            :class:`evefile.entities.data.MeasureData`, otherwise
+            :obj:`None`.
 
         """
         output = [None, None, None]
@@ -388,3 +389,33 @@ class EveFile(File):
                 self.metadata.preferred_normalisation_channel
             ]
         return output
+
+    def get_joined_data(self, data=[], mode="AxesLastFill"):
+        """
+        Retrieve data objects with commensurate dimensions.
+
+        .. warning::
+
+            No implementation yet... only method signature and description.
+
+
+        Parameters
+        ----------
+        data : :class:`list`
+            Names of data or actual data objects whose data should be joined.
+
+        mode : :class:`str`
+            Name of the join mode to be used. This must be a mode
+            understood by the :class:`JoinFactory
+            <evefile.controllers.joining.JoinFactory>`.
+
+        Returns
+        -------
+        data : :class:`list`
+            List of data objects.
+
+            Each item in the list is of type
+            :class:`evefile.entities.data.MeasureData`.
+
+        """
+        return []

@@ -241,3 +241,9 @@ class TestEveFile(unittest.TestCase):
         self.assertListEqual(
             self.evefile.get_preferred_data(), [None, None, None]
         )
+
+    def test_get_joined_data_returns_list(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        self.assertIsInstance(self.evefile.get_joined_data(), list)
