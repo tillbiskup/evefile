@@ -1,4 +1,5 @@
 """
+.. include:: <isopub.txt>
 .. _evedata: https://evedata.docs.radiometry.de/
 
 *Ensure data and axes values are commensurate and compatible.*
@@ -335,31 +336,21 @@ A few comments for further development
 
 .. important::
 
-    The classes implemented in this module are currently (2025/08/08) a
-    direct copy of the corresponding module in `evedata`_, and here
-    particularly from the "measurement" functional layer. However,
-    the needs in ``evefile`` are different, hence even the basic
-    :class:`Join` class needs to be redesigned. Further information below.
-    Once this has been done, this entire section should be removed.
+    The classes implemented in this module have been copied from the
+    corresponding module in `evedata`_, and here particularly from the
+    "measurement" functional layer. However, the needs in ``evefile`` are
+    different, hence even the basic :class:`Join` class needs to be
+    redesigned. Further information below. Once this has been done,
+    this entire section should be removed.
 
-
-* Joining should take a list of data objects (or their names - both should
-  be possible) as input and return a list of data objects with their data
-  being commensurate.
-
-* Joining needs to work on an arbitrary number of data objects.
-  Internally, of course, they need to be distinguished between channel,
-  axis, and monitor, and handled accordingly. However, this amounts to
-  just one imput argument for the :meth:`Join.join` method (a list).
-
-* As detailed for the IDL implementation of EveFile, in a first step the
-  list of position counts of the final joined array needs to be
-  determined, before dealing with the actual data values.
 
 * Joining should probably take into account all available attributes,
   not only ``data``, but options as well if present. This of course only
   applies to ``evefile`` if options of devices are mapped to the
   respective data objects.
+
+* Joining should probably take into account monitors that need to be
+  converted to :class:`DeviceData <evefile.entities.data.DeviceData>` before.
 
 
 Join modes currently implemented
@@ -371,10 +362,17 @@ Currently, there is exactly one join mode implemented:
 
   Inflate axes to data dimensions using last for missing value.
 
-  If no previous axes value is available, convert the data into a
-  :obj:`numpy.ma.MaskedArray` object and mask the value.
+  This was previously known as "LastFill" mode and was described as "Use
+  all channel data and fill in the last known position for all axes
+  without values." In SQL terms (relational database), this would be
+  similar to a left join with data left and axes right, but additionally
+  explicitly setting the missing axes values in the join to the last
+  known axis value. If no previous axes value is available, convert the
+  data into a :obj:`numpy.ma.MaskedArray` object and mask the value.
 
-  This mode is equivalent to the "LastFill" mode described above.
+  The resulting position list is the set union of positions of all given
+  channels. This means that for each position where at least one channel
+  was recorded, this position is included in the list.
 
 
 For developers
@@ -401,10 +399,14 @@ Module documentation
 
 """
 
+import copy
 import logging
+from functools import reduce
 
 import numpy as np
 from numpy import ma
+
+import evefile.entities.data
 
 logger = logging.getLogger(__name__)
 
@@ -495,7 +497,7 @@ class Join:
         Returns
         -------
         data : :class:`list`
-            Data objects with Joined data values.
+            Data objects with joined data values.
 
         Raises
         ------
@@ -538,39 +540,45 @@ class AxesLastFill(Join):
     without values." In SQL terms (relational database), this would be
     similar to a left join with data left and axes right, but additionally
     explicitly setting the missing axes values in the join to the last
-    known axis value.
+    known axis value. If no previous axes value is available, convert the
+    data into a :obj:`numpy.ma.MaskedArray` object and mask the value.
 
-    While the terms "channel" and "axis" have different meanings than in
-    context of the :mod:`joining
-    <evefile.controllers.joining>` module, the behaviour is
-    qualitatively similar:
+    The resulting position list is the set union of positions of all given
+    channels. This means that for each position where at least one channel
+    was recorded, this position is included in the list.
 
-    * The device used as "data" is taken as reference and its values are
-      *not* changed.
-    * The values of  devices used as "axes" are inflated to the same
-      dimension as the data.
+    In more detail, the following happens to each individual data object,
+    separated by type of data:
+
+    Channels:
+
+    * The position list is the set union of positions of all given channels.
+    * Positions where no value was recorded for a given channel are set as
+      missing ("masked" in NumPy terminology), the resuling data array is of
+      type :class:`numpy.ma.MaskedArray`.
+
+    Axes:
+
+    * The position list is the set union of positions of all given channels.
     * For values originally missing for an axis, the last value of the
       previous position is used.
     * If no previous value exists for a missing value, the data are
       converted into a :obj:`numpy.ma.MaskedArray` object and the values
       masked with :data:`numpy.ma.masked`.
     * The snapshots are checked for values corresponding to the axis,
-      and if present, are taken into account.
+      and if present, are taken into account. If there is more than one
+      snapshot, always the newest snapshot previous to the current axis
+      position will be used.
 
     Of course, as in all cases, the (integer) positions are used as common
     reference for the values of all devices.
-
-    .. important::
-        If there is more than one snapshot, always the newest snapshot
-        previous to the current axis position should be used. Check whether
-        this is implemented already.
 
     Attributes
     ----------
     evefile : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the join should be performed for.
 
-        Although joining is carried out for a small subset of the
+        Although joining may only be carried out for a small subset of the
         data of an EveFile object, additional information from the
         EveFile object may be necessary to perform the task, *e.g.*,
         the snapshots.
@@ -583,57 +591,104 @@ class AxesLastFill(Join):
 
     Examples
     --------
-    See the :class:`Join` base class for examples -- and replace
-    the class name accordingly.
+    Usually, joining takes place in the :meth:`get_joined_data()
+    <evefile.boundaries.evefile.EveFile.get_joined_data>`
+    method of the :class:`EveFile <evefile.boundaries.evefile.EveFile>` class.
+
+    To join data, call :meth:`join` with a list of data objects or data
+    object names, respectively:
+
+    .. code-block::
+
+        join = Join(evefile=my_evefile)
+        # Call with data object names
+        joined_data = join.join(["name1", "name2"])
+        # Call with data objects
+        joined_data = join.join(
+            [my_evefile.data["id1"], my_evefile.data["id2"]]
+        )
+
+    Note that the joined data objects appear in the same order as you
+    provided them or their names/IDs to the :meth:`join` method.
 
     """
 
     def __init__(self, evefile=None):
         super().__init__(evefile=evefile)
+        self._channels = []
+        self._axes = []
+        self._result_positions = None
+        self._channel_indices = []
 
     def _join(self, data=None):
-        result = []
-        return result
+        self._sort_data(data)
+        self._assign_result_positions()
+        self._fill_axes()
+        self._fill_channels()
+        return self._assign_result()
 
-    # pylint: disable-next=too-many-locals
-    def _join_legacy(self, data=None, axes=None, scan_module=None):
-        result = []
-        data_device = self.evefile.data[data[0]]
-        axes_devices = [self.evefile.data[axis[0]] for axis in axes]
-        if data[1]:
-            data_attribute = data[1]
-        else:
-            data_attribute = "data"
-        data_values = getattr(data_device, data_attribute)
-        result.append(data_values)
-        for idx, axes_device in enumerate(axes_devices):
-            if axes[idx][1]:
-                axes_attribute = axes[idx][1]
-            else:
-                axes_attribute = "data"
-            values = getattr(axes_device, axes_attribute)
-            if axes[idx][0] in self.evefile.snapshots:
-                self.evefile.snapshots[axes[idx][0]].get_data()
-                axes_positions = np.searchsorted(
-                    axes_device.position_counts,
-                    self.evefile.snapshots[axes[idx][0]].position_counts,
+    def _sort_data(self, data):
+        for idx, item in enumerate(data):
+            if isinstance(item, evefile.entities.data.ChannelData):
+                self._channels.append(copy.copy(item))
+                self._channel_indices.append(idx)
+            if isinstance(item, evefile.entities.data.AxisData):
+                self._axes.append(copy.copy(item))
+
+    def _assign_result_positions(self):
+        channel_positions = [item.position_counts for item in self._channels]
+        self._result_positions = reduce(np.union1d, channel_positions).astype(
+            np.int64
+        )
+
+    def _fill_axes(self):
+        for axis in self._axes:
+            if axis.metadata.id in self.evefile.snapshots:
+                self.evefile.snapshots[axis.metadata.id].get_data()
+                axis.position_counts = np.searchsorted(
+                    axis.position_counts,
+                    self.evefile.snapshots[axis.metadata.id].position_counts,
                 )
-                snapshot_values = getattr(
-                    self.evefile.snapshots[axes[idx][0]],
-                    axes_attribute,
+                axis.data = np.insert(
+                    axis.data,
+                    axis.position_counts,
+                    self.evefile.snapshots[axis.metadata.id].data,
                 )
-                values = np.insert(values, axes_positions, snapshot_values)
-            else:
-                axes_positions = axes_device.position_counts
             positions = (
-                np.digitize(data_device.position_counts, axes_positions) - 1
+                np.searchsorted(
+                    axis.position_counts, self._result_positions, side="right"
+                )
+                - 1
             )
-            values = values[positions]
-            # Set values to special value where no previous axis values exist
+            axis.position_counts = self._result_positions
+            axis.data = axis.data[positions]
             if np.any(np.where(positions < 0)):
-                values = ma.masked_array(values)
-                values[np.where(positions < 0)] = ma.masked
-            result.append(values)
+                axis.data = ma.masked_array(axis.data)
+                axis.data[np.where(positions < 0)] = ma.masked
+
+    def _fill_channels(self):
+        for channel in self._channels:
+            if not np.array_equal(
+                self._result_positions, channel.position_counts
+            ):
+                original_values = channel.data
+                channel.data = ma.masked_array(
+                    np.zeros(len(self._result_positions))
+                )
+                channel.data = ma.masked_array(channel.data)
+                positions = np.setdiff1d(
+                    self._result_positions, channel.position_counts
+                )
+                channel.data[channel.position_counts.astype(np.int64)] = (
+                    original_values
+                )
+                channel.data[positions] = ma.masked
+                channel.position_counts = self._result_positions
+
+    def _assign_result(self):
+        result = [*self._axes]
+        for idx, item in enumerate(self._channels):
+            result.insert(self._channel_indices[idx], item)
         return result
 
 
