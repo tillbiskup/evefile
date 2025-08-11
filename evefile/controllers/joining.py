@@ -1,5 +1,4 @@
 """
-.. include:: <isopub.txt>
 .. _evedata: https://evedata.docs.radiometry.de/
 
 *Ensure data and axes values are commensurate and compatible.*
@@ -24,7 +23,7 @@ criterion, as not only the shape needs to be commensurate, but the indices
 (in this case the positions) be identical.
 
 Furthermore, joining is a *modification* of the original data. Without
-retaining the original data as recorded in the eveH5 file, you will loose
+retaining the original data as recorded in the eveH5 file, you will lose
 the information which data points were actually recorded (or axes
 positions set). This is a key difference in handling joining in the
 ``evefile`` and `evedata`_ packages, as detailed below.
@@ -145,7 +144,7 @@ value from outside the measurement program or actual scan).
 
     So far, we have only discussed how to deal with positions in a joined
     "array" where values for axes, channels, or monitors are missing. This
-    is entirely separate from the question how to define the common
+    is entirely separate from the question of how to define the common
     denominator, *i.e.* the list of positions (PosCounts) values for the
     different devices should be available for. This is discussed in more
     details below.
@@ -358,21 +357,24 @@ Join modes currently implemented
 
 Currently, there is exactly one join mode implemented:
 
-* :class:`AxesLastFill`
+* :class:`ChannelPositions`
 
-  Inflate axes to data dimensions using last for missing value.
-
-  This was previously known as "LastFill" mode and was described as "Use
-  all channel data and fill in the last known position for all axes
-  without values." In SQL terms (relational database), this would be
-  similar to a left join with data left and axes right, but additionally
-  explicitly setting the missing axes values in the join to the last
-  known axis value. If no previous axes value is available, convert the
-  data into a :obj:`numpy.ma.MaskedArray` object and mask the value.
+  Return values for all positions where at least one channel was recorded.
 
   The resulting position list is the set union of positions of all given
   channels. This means that for each position where at least one channel
   was recorded, this position is included in the list.
+
+  This was **previously known as "LastFill" mode** and was described as "Use
+  all channel data and fill in the last known position for all axes
+  without values." In SQL terms (relational database), this would be
+  similar to a left join with channels left and axes right, but additionally
+  explicitly setting the missing axes values in the join to the last
+  known axis value. If no previous axes value is available, convert the
+  data into a :obj:`numpy.ma.MaskedArray` object and mask the value.
+  Furthermore, for each channel where no value exists for any of the
+  positions from the position list, the data are converted into a
+  :obj:`numpy.ma.MaskedArray` object and the value(s) masked.
 
 
 For developers
@@ -388,9 +390,9 @@ There is a factory class :class:`JoinFactory` that you can ask to get a
 .. code-block::
 
     factory = JoinFactory()
-    join = factory.get_join(mode="AxesLastFill")
+    join = factory.get_join(mode="ChannelPositions")
 
-This would return an :obj:`AxesLastFill` object. For further details,
+This would return an :obj:`ChannelPositions` object. For further details,
 see the :class:`JoinFactory` documentation.
 
 
@@ -406,6 +408,7 @@ from functools import reduce
 import numpy as np
 from numpy import ma
 
+import evefile.entities
 import evefile.entities.data
 
 logger = logging.getLogger(__name__)
@@ -471,6 +474,10 @@ class Join:
     """
 
     def __init__(self, evefile=None):
+        self._channel_indices = []
+        self._axes = []
+        self._channels = []
+        self._result_positions = None
         self.evefile = evefile
 
     def join(self, data=None):
@@ -519,33 +526,100 @@ class Join:
         return self._join(data=data)
 
     def _convert_str_to_data_object(self, name_or_id=""):
-        result = None
         try:
             result = self.evefile.data[name_or_id]
         except KeyError:
             result = self.evefile.get_data(name_or_id)
         return result
 
-    def _join(self, data=None):  # noqa
-        return []
+    def _join(self, data=None):
+        self._sort_data(data)
+        self._assign_result_positions()
+        self._fill_axes()
+        self._fill_channels()
+        return self._assign_result()
+
+    def _sort_data(self, data):
+        for idx, item in enumerate(data):
+            if isinstance(item, evefile.entities.data.ChannelData):
+                self._channels.append(copy.copy(item))
+                self._channel_indices.append(idx)
+            if isinstance(item, evefile.entities.data.AxisData):
+                self._axes.append(copy.copy(item))
+
+    def _assign_result_positions(self):
+        pass
+
+    def _fill_axes(self):
+        for axis in self._axes:
+            if axis.metadata.id in self.evefile.snapshots:
+                self.evefile.snapshots[axis.metadata.id].get_data()
+                axis.position_counts = np.searchsorted(
+                    axis.position_counts,
+                    self.evefile.snapshots[axis.metadata.id].position_counts,
+                )
+                axis.data = np.insert(
+                    axis.data,
+                    axis.position_counts,
+                    self.evefile.snapshots[axis.metadata.id].data,
+                )
+            positions = (
+                np.searchsorted(
+                    axis.position_counts, self._result_positions, side="right"
+                )
+                - 1
+            )
+            axis.position_counts = self._result_positions
+            axis.data = axis.data[positions]
+            if np.any(np.where(positions < 0)):
+                axis.data = ma.masked_array(axis.data)
+                axis.data[np.where(positions < 0)] = ma.masked
+
+    def _fill_channels(self):
+        for channel in self._channels:
+            if len(self._result_positions) > len(channel.position_counts):
+                original_values = channel.data
+                channel.data = ma.masked_array(
+                    np.zeros(len(self._result_positions))
+                )
+                channel.data = ma.masked_array(channel.data)
+                positions = np.setdiff1d(
+                    self._result_positions, channel.position_counts
+                )
+                channel.data[channel.position_counts.astype(np.int64)] = (
+                    original_values
+                )
+                channel.data[positions] = ma.masked
+            elif len(self._result_positions) < len(channel.position_counts):
+                channel.data = channel.data[self._result_positions]
+            channel.position_counts = self._result_positions
+
+    def _assign_result(self):
+        result = [*self._axes]
+        for idx, item in enumerate(self._channels):
+            result.insert(self._channel_indices[idx], item)
+        return result
 
 
-class AxesLastFill(Join):
-    # noinspection PyUnresolvedReferences
+class ChannelPositions(Join):
     """
-    Inflate axes to data dimensions using last for missing value.
-
-    This was previously known as "LastFill" mode and was described as "Use
-    all channel data and fill in the last known position for all axes
-    without values." In SQL terms (relational database), this would be
-    similar to a left join with data left and axes right, but additionally
-    explicitly setting the missing axes values in the join to the last
-    known axis value. If no previous axes value is available, convert the
-    data into a :obj:`numpy.ma.MaskedArray` object and mask the value.
+    Return values for all positions where at least one channel was recorded.
 
     The resulting position list is the set union of positions of all given
     channels. This means that for each position where at least one channel
     was recorded, this position is included in the list.
+
+    This was **previously known as "LastFill" mode** and was described as
+    "Use all channel data and fill in the last known position for all axes
+    without values." In SQL terms (relational database), this would be
+    similar to a left join with channels left and axes right,
+    but additionally explicitly setting the missing axes values in the
+    join to the last known axis value. If no previous axes value is
+    available, convert the data into a :obj:`numpy.ma.MaskedArray` object
+    and mask the value. Furthermore, for each channel where no value
+    exists for any of the positions from the position list, the data are
+    converted into a :obj:`numpy.ma.MaskedArray` object and the value(s)
+    masked.
 
     In more detail, the following happens to each individual data object,
     separated by type of data:
@@ -554,7 +628,7 @@ class AxesLastFill(Join):
 
     * The position list is the set union of positions of all given channels.
     * Positions where no value was recorded for a given channel are set as
-      missing ("masked" in NumPy terminology), the resuling data array is of
+      missing ("masked" in NumPy terminology), the resulting data array is of
       type :class:`numpy.ma.MaskedArray`.
 
     Axes:
@@ -600,7 +674,7 @@ class AxesLastFill(Join):
 
     .. code-block::
 
-        join = Join(evefile=my_evefile)
+        join = ChannelPositions(evefile=my_evefile)
         # Call with data object names
         joined_data = join.join(["name1", "name2"])
         # Call with data objects
@@ -613,83 +687,103 @@ class AxesLastFill(Join):
 
     """
 
-    def __init__(self, evefile=None):
-        super().__init__(evefile=evefile)
-        self._channels = []
-        self._axes = []
-        self._result_positions = None
-        self._channel_indices = []
-
-    def _join(self, data=None):
-        self._sort_data(data)
-        self._assign_result_positions()
-        self._fill_axes()
-        self._fill_channels()
-        return self._assign_result()
-
-    def _sort_data(self, data):
-        for idx, item in enumerate(data):
-            if isinstance(item, evefile.entities.data.ChannelData):
-                self._channels.append(copy.copy(item))
-                self._channel_indices.append(idx)
-            if isinstance(item, evefile.entities.data.AxisData):
-                self._axes.append(copy.copy(item))
-
     def _assign_result_positions(self):
         channel_positions = [item.position_counts for item in self._channels]
         self._result_positions = reduce(np.union1d, channel_positions).astype(
             np.int64
         )
 
-    def _fill_axes(self):
-        for axis in self._axes:
-            if axis.metadata.id in self.evefile.snapshots:
-                self.evefile.snapshots[axis.metadata.id].get_data()
-                axis.position_counts = np.searchsorted(
-                    axis.position_counts,
-                    self.evefile.snapshots[axis.metadata.id].position_counts,
-                )
-                axis.data = np.insert(
-                    axis.data,
-                    axis.position_counts,
-                    self.evefile.snapshots[axis.metadata.id].data,
-                )
-            positions = (
-                np.searchsorted(
-                    axis.position_counts, self._result_positions, side="right"
-                )
-                - 1
-            )
-            axis.position_counts = self._result_positions
-            axis.data = axis.data[positions]
-            if np.any(np.where(positions < 0)):
-                axis.data = ma.masked_array(axis.data)
-                axis.data[np.where(positions < 0)] = ma.masked
 
-    def _fill_channels(self):
-        for channel in self._channels:
-            if not np.array_equal(
-                self._result_positions, channel.position_counts
-            ):
-                original_values = channel.data
-                channel.data = ma.masked_array(
-                    np.zeros(len(self._result_positions))
-                )
-                channel.data = ma.masked_array(channel.data)
-                positions = np.setdiff1d(
-                    self._result_positions, channel.position_counts
-                )
-                channel.data[channel.position_counts.astype(np.int64)] = (
-                    original_values
-                )
-                channel.data[positions] = ma.masked
-                channel.position_counts = self._result_positions
+class AxisPositions(Join):
+    """
+    Return values for all positions where at least one axis was set.
 
-    def _assign_result(self):
-        result = [*self._axes]
-        for idx, item in enumerate(self._channels):
-            result.insert(self._channel_indices[idx], item)
-        return result
+    The resulting position list is the set union of positions of all given
+    axes. This means that for each position where at least one axis
+    was set, this position is included in the list.
+
+    This was **previously known as "NaNFill" mode** and was described as
+    "Use all axis data and fill in NaN for all channels without values."
+    In SQL terms (relational database), this would be similar to a left
+    join with axes left and channels right, but additionally
+    explicitly setting the missing axes values in the join to the last
+    known axis value. If no previous axes value is available, convert the
+    data into a :obj:`numpy.ma.MaskedArray` object and mask the value.
+    Furthermore, for each channel where no value exists for any of the
+    positions from the position list, the data are converted into a
+    :obj:`numpy.ma.MaskedArray` object and the value(s) masked.
+
+    In more detail, the following happens to each individual data object,
+    separated by type of data:
+
+    Channels:
+
+    * The position list is the set union of positions of all given axes.
+    * Positions where no value was recorded for a given channel are set as
+      missing ("masked" in NumPy terminology), the resulting data array is of
+      type :class:`numpy.ma.MaskedArray`.
+
+    Axes:
+
+    * The position list is the set union of positions of all given axes.
+    * For values originally missing for an axis, the last value of the
+      previous position is used.
+    * If no previous value exists for a missing value, the data are
+      converted into a :obj:`numpy.ma.MaskedArray` object and the values
+      masked with :data:`numpy.ma.masked`.
+    * The snapshots are checked for values corresponding to the axis,
+      and if present, are taken into account. If there is more than one
+      snapshot, always the newest snapshot previous to the current axis
+      position will be used.
+
+    Of course, as in all cases, the (integer) positions are used as common
+    reference for the values of all devices.
+
+    Attributes
+    ----------
+    evefile : :class:`evefile.boundaries.evefile.EveFile`
+        EveFile object the join should be performed for.
+
+        Although joining may only be carried out for a small subset of the
+        data of an EveFile object, additional information from the
+        EveFile object may be necessary to perform the task, *e.g.*,
+        the snapshots.
+
+    Parameters
+    ----------
+    evefile : :class:`evefile.boundaries.evefile.EveFile`
+        EveFile the join should be performed for.
+
+
+    Examples
+    --------
+    Usually, joining takes place in the :meth:`get_joined_data()
+    <evefile.boundaries.evefile.EveFile.get_joined_data>`
+    method of the :class:`EveFile <evefile.boundaries.evefile.EveFile>` class.
+
+    To join data, call :meth:`join` with a list of data objects or data
+    object names, respectively:
+
+    .. code-block::
+
+        join = AxisPositions(evefile=my_evefile)
+        # Call with data object names
+        joined_data = join.join(["name1", "name2"])
+        # Call with data objects
+        joined_data = join.join(
+            [my_evefile.data["id1"], my_evefile.data["id2"]]
+        )
+
+    Note that the joined data objects appear in the same order as you
+    provided them or their names/IDs to the :meth:`join` method.
+
+    """
+
+    def _assign_result_positions(self):
+        axis_positions = [item.position_counts for item in self._axes]
+        self._result_positions = reduce(np.union1d, axis_positions).astype(
+            np.int64
+        )
 
 
 class JoinFactory:
@@ -726,9 +820,10 @@ class JoinFactory:
     .. code-block::
 
         factory = JoinFactory()
-        join = factory.get_join(mode="AxesLastFill")
+        join = factory.get_join(mode="ChannelPositions")
 
-    This will provide you with the appropriate :obj:`AxesLastFill` instance.
+    This will provide you with the appropriate :obj:`ChannelPositions`
+    instance.
 
     As joins need a :class:`EveFile
     <evefile.boundaries.evefile.EveFile>` object,
@@ -738,7 +833,7 @@ class JoinFactory:
     .. code-block::
 
         factory = JoinFactory(evefile=my_evefile)
-        join = factory.get_join(mode="AxesLastFill")
+        join = factory.get_join(mode="ChannelPositions")
 
     Thus, when used from within a :class:`EveFile
     <evefile.boundaries.evefile.EveFile>` object,

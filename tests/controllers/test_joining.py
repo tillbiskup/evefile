@@ -90,12 +90,21 @@ class TestJoin(unittest.TestCase):
             self.join.join()
 
     def test_join_returns_list(self):
+        class MyJoin(joining.Join):
+            def _join(self, data=None):
+                return data
+
+        self.join = MyJoin()
         self.join.evefile = self.evefile
         self.join.evefile.data = {
-            "bar": MockChannel(),
-            "baz": MockAxis(),
+            "SimChan:01": MockChannel(
+                data=np.random.random(5), positions=np.linspace(0, 4, 5)
+            ),
+            "SimMot:01": MockAxis(
+                data=np.random.random(7), positions=np.linspace(0, 6, 7)
+            ),
         }
-        result = self.join.join(data=["bar", "baz"])
+        result = self.join.join(data=["SimChan:01", "SimMot:01"])
         self.assertIsInstance(result, list)
 
     def test_join_with_ids_converts_to_datasets(self):
@@ -141,9 +150,9 @@ class TestJoin(unittest.TestCase):
             self.assertIsInstance(item, evefile.entities.data.MeasureData)
 
 
-class TestAxesLastFill(unittest.TestCase):
+class TestChannelPositions(unittest.TestCase):
     def setUp(self):
-        self.join = joining.AxesLastFill()
+        self.join = joining.ChannelPositions()
         self.join.evefile = MockEveFile()
 
     def test_instantiate_class(self):
@@ -336,6 +345,57 @@ class TestAxesLastFill(unittest.TestCase):
         )
 
 
+class TestAxisPositions(unittest.TestCase):
+    def setUp(self):
+        self.join = joining.AxisPositions()
+        self.join.evefile = MockEveFile()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_join_returns_only_values_for_axis_positions(self):
+        self.join.evefile.data = {
+            "SimMot:01": MockAxis(
+                data=np.random.random(5), positions=np.linspace(0, 4, 5)
+            ),
+            "SimChan:01": MockChannel(
+                data=np.random.random(7), positions=np.linspace(0, 6, 7)
+            ),
+        }
+        result = self.join.join(data=["SimMot:01", "SimChan:01"])
+        for item in result:
+            self.assertEqual(
+                len(self.join.evefile.data["SimMot:01"].data), len(item.data)
+            )
+
+    def test_join_returns_values_for_all_axis_positions(self):
+        self.join.evefile.data = {
+            "SimMot:01": MockAxis(
+                data=np.random.random(7), positions=np.linspace(0, 6, 7)
+            ),
+            "SimChan:01": MockChannel(
+                data=np.random.random(5), positions=np.linspace(0, 4, 5)
+            ),
+        }
+        result = self.join.join(data=["SimMot:01", "SimChan:01"])
+        for item in result:
+            self.assertEqual(
+                len(self.join.evefile.data["SimMot:01"].data), len(item.data)
+            )
+
+    def test_join_returns_only_values_for_axis_positions_with_gaps(self):
+        self.join.evefile.data = {
+            "SimChan:01": MockChannel(
+                data=np.random.random(7), positions=np.linspace(0, 6, 7)
+            ),
+            "SimMot:01": MockAxis(
+                data=np.random.random(4), positions=np.asarray([0, 2, 3, 4])
+            ),
+        }
+        result = self.join.join(data=["SimChan:01", "SimMot:01"])
+        self.assertEqual(len(result[0].data), len(result[1].data))
+
+
 class TestJoinFactory(unittest.TestCase):
     def setUp(self):
         self.factory = joining.JoinFactory()
@@ -348,7 +408,7 @@ class TestJoinFactory(unittest.TestCase):
 
     def test_get_join_with_type_returns_correct_join(self):
         self.assertIsInstance(
-            self.factory.get_join(mode="AxesLastFill"),
+            self.factory.get_join(mode="ChannelPositions"),
             joining.Join,
         )
 
