@@ -22,14 +22,142 @@ To be exact, being commensurate is only a necessary, but not a sufficient
 criterion, as not only the shape needs to be commensurate, but the indices
 (in this case the positions) be identical.
 
+Furthermore, joining is a *modification* of the original data. Without
+retaining the original data as recorded in the eveH5 file, you will loose
+the information which data points were actually recorded (or axes
+positions set). This is a key difference in handling joining in the
+``evefile`` and `evedata`_ packages, as detailed below.
 
-A bit of history
-================
 
-In the previous interface (``EveFile``), there are four "fill modes" available
-for data: NoFill, LastFill, NaNFill, LastNaNFill. From the `documentation of
-eveFile <https://www.ahf.ptb.de/messpl/sw/python/common/eveFile/doc/html
-/Section-Fillmode.html#evefile.Fillmode>`_:
+Different scenarios for data joining
+====================================
+
+There are basically two different scenarios, and currently, `evedata`_
+implements only the first, while ``evefile`` will most probably need to
+implement the second:
+
+#. Plotting data
+
+   In this case, there is always one data vector, but several possible
+   axes vectors. Hence, we need only to deal with a 1..n relationship of data
+   to axes.
+
+   However, in this case, "axes" and "data" have different meanings as
+   compared to motor axes and detector channels usually discussed. *I.e.*,
+   axes and data can be both, motor axes and detector channels, respectively.
+
+   Furthermore, the result of joining depends on the actually chosen set
+   of "axes" and "data" and may change as soon as the user selects
+   different datasets to be plotted. Hence, the original data need to be
+   retained somewhere.
+
+#. Creating the "all-knowing table"
+
+   An arbitrary set of channels and axes (and monitors) should be joined
+   in one single table for an easy overview and simple access. Besides the
+   known problems of this approach (the data model underlying the
+   measurements simply does not allow to be represented as a 2D table),
+   it is and remains a known and important use case.
+
+These two different scenarios may eventually result in having two
+``joining`` modules in `evedata`_, one in the ``measurement`` functional
+layer, and one in the ``evefile`` functional layer, identical with the one
+developed here in ``evefile``.
+
+
+Dealing with axes, channels, and monitors
+=========================================
+
+If you think of joining different data objects, there is one trivial case
+where you only retain those values where indices exist for all the data
+objects to be joined. However, as soon as you think of retaining all
+indices of at least one of the data objects, you need to decide how to
+deal with the other data objects and the missing values in there.
+
+Here, it is important to distinguish between the three concepts used in
+the EVE measurement program: axes, channels, and monitors. A bit of
+terminology may be helpful before going into details:
+
+axis
+    A device whose values are set explicitly by the measurement program.
+
+    The prototypical "axis" is a motor axis, but from the perspective of
+    the measurement program, everything that is set explicitly during the
+    measurement is represented as an axis.
+
+channel
+    A device whose values are read explicitly by the measurement program.
+
+    The prototypical "channel" is a detector channel, but from the
+    perspective of the measurement program, everything that is read
+    explicitly (at defined times during the scan) by the measurement
+    program qualifies as channel.
+
+monitor
+    A device whose values are monitored for changes that are recorded.
+
+    The monitor concept originates from the underlying EPICS layer and
+    provides telemetry data for everything that can potentially change its
+    value, but where you are only interested in the changes.
+
+
+Now for the joining of data where you need to "fill" values for datasets
+that belong to one of the three classes detailed above.
+
+
+Axes are assumed to retain their value
+--------------------------------------
+
+An axis is by definition (see above) a device *actively* controlled by the
+measurement program. Hence, if there is no active change in the setting,
+the axis is assumed to have the exact same value as set last time.
+Therefore, axis values are "filled" with the last known value.
+
+This last known value can either be the value set within a scan
+explicitly, or, if present, the value from a snapshot containing this axis.
+
+
+Channels cannot be interpolated at all
+--------------------------------------
+
+A channel is by definition a device whose values are read at defined times
+during a scan. Hence, if you haven't recorded a value for a given position
+("PosCount"), there is no way to infer this value. Therefore, if you need
+to "fill" those positions, a "missing value" (``NaN`` or similar,
+see ":ref:`sec-missing_values`" below for further details) is set for
+these positions.
+
+
+Monitors have not changed by definition
+---------------------------------------
+
+A monitor is by definition a device you are observing for changes in its
+values. Hence, if no chance has been recorded (*i.e.*, no newer value is
+present), the value hasn't changed. Therefore, monitor data can be
+"filled" with the last known value, and in contrast to axes, we can be
+certain that this is true. (For an axis, you could always argue that if
+there is no read-back mechanism implemented, somebody could change its
+value from outside the measurement program or actual scan).
+
+
+.. note::
+
+    So far, we have only discussed how to deal with positions in a joined
+    "array" where values for axes, channels, or monitors are missing. This
+    is entirely separate from the question how to define the common
+    denominator, *i.e.* the list of positions (PosCounts) values for the
+    different devices should be available for. This is discussed in more
+    details below.
+
+
+
+Join modes: A bit of history
+============================
+
+Historically, there were four "fill modes" available for data: NoFill,
+LastFill, NaNFill, LastNaNFill. From the `documentation of eveFile
+<https://www.ahf.ptb.de/messpl/sw/python/common/eveFile/doc/html/Section
+-Fillmode.html#evefile.Fillmode>`_:
 
 
 NoFill
@@ -130,37 +258,6 @@ main/standard section yet.
     and parameters monitored), it might be the only sensible chance to get
     hand of the information contained in snapshots, however. Nevertheless,
     this would be something ``evefile`` should not be concerned about.
-
-
-Different scenarios for data joining
-====================================
-
-There are basically two different scenarios, and currently, `evedata`_
-implements only the first, while ``evefile`` will most probably need to
-implement the second:
-
-#. Plotting data
-
-   In this case, there is always one data vector, but several possible
-   axes vectors. Hence, we need only to deal with a 1..n relationship of data
-   to axes.
-
-   However, in this case, "axes" and "data" have different meanings as
-   compared to motor axes and detector channels usually discussed. *I.e.*,
-   axes and data can be both, motor axes and detector channels, respectively.
-
-#. Creating the "all-knowing table"
-
-   An arbitrary set of channels and axes (and monitors) should be joined
-   in one single table for an easy overview and simple access. Besides the
-   known problems of this approach (the data model underlying the
-   measurements simply does not allow to be represented as a 2D table),
-   it is and remains a known and important use case.
-
-These two different scenarios may eventually result in having two
-``joining`` modules in `evedata`_, one in the ``measurement`` functional
-layer, and one in the ``evefile`` functional layer, identical with the one
-developed here in ``evefile``.
 
 
 .. _sec-missing_values:
@@ -356,33 +453,25 @@ class Join:
     <evefile.boundaries.evefile.EveFile.get_joined_data>`
     method.
 
-    To join data, in case of a detector channel and a motor axis,
-    call :meth:`join` with the respective parameters:
+    To join data, call :meth:`join` with a list of data objects or data
+    object names, respectively:
 
     .. code-block::
 
         join = Join(evefile=my_evefile)
-        data, *axes = join.join(
-            data=("SimChan:01", None),
-            axes=(("SimMot:02", None)),
+        # Call with data object names
+        joined_data = join.join(["name1", "name2"])
+        # Call with data objects
+        joined_data = join.join(
+            [my_evefile.data["id1"], my_evefile.data["id2"]]
         )
-
-    Note the use of two variables for the return of the method, and in
-    particular the use of ``*axes`` ensuring that ``axes`` is always a list
-    and takes all remaining return arguments, regardless of their count.
-
-    .. important::
-        While it may be tempting to use this class on your own and work
-        further with the returned arrays, you will lose all metadata and
-        context. Hence, simply *don't*. Just use the interface provided by
-        :class:`EveFile <evefile.boundaries.evefile.EveFile>` instead.
 
     """
 
     def __init__(self, evefile=None):
         self.evefile = evefile
 
-    def join(self, data=None, axes=None, scan_module=""):
+    def join(self, data=None):
         """
         Harmonise data.
 
@@ -397,34 +486,16 @@ class Join:
 
         Parameters
         ----------
-        data : :class:`tuple` | :class:`list`
-            Name of the device and its attribute data are taken from.
+        data : :class:`list`
+            (Names of the) data objects to join.
 
-            If the attribute is set to None, ``data`` will be used instead.
-
-        axes : :class:`tuple` | :class:`list`
-            Names of the devices and their attribute axes values are taken from.
-
-            If an attribute is set to None, ``data`` will be used instead.
-
-            Each element of the tuple/list is itself a two-element
-            tuple/list with name and attribute.
-
-        scan_module : :class:`str`
-            Scan module ID the device belongs to
+            You can provide a list of either names or IDs of data objects or
+            the data objects themselves.
 
         Returns
         -------
         data : :class:`list`
-            Joined data and axes values.
-
-            The first element is always the data, the following the
-            (variable number of) axes. To separate the two and always get a
-            list of axes, you may call it like this:
-
-            .. code-block::
-
-                data, *axes = join.join(...)
+            Data objects with Joined data values.
 
         Raises
         ------
@@ -432,19 +503,28 @@ class Join:
             Raised if no evefile is present
         ValueError
             Raised if no data are provided
-        ValueError
-            Raised if no axes are provided
 
         """
         if not self.evefile:
             raise ValueError("Need an evefile to join data.")
         if not data:
             raise ValueError("Need data to join data.")
-        if not axes:
-            raise ValueError("Need axes to join data.")
-        return self._join(data=data, axes=axes, scan_module=scan_module)
+        data = [
+            self._convert_str_to_data_object(item)
+            for item in data
+            if isinstance(item, str)
+        ]
+        return self._join(data=data)
 
-    def _join(self, data=None, axes=None, scan_module=None):  # noqa
+    def _convert_str_to_data_object(self, name_or_id=""):
+        result = None
+        try:
+            result = self.evefile.data[name_or_id]
+        except KeyError:
+            result = self.evefile.get_data(name_or_id)
+        return result
+
+    def _join(self, data=None):  # noqa
         return []
 
 
@@ -511,8 +591,12 @@ class AxesLastFill(Join):
     def __init__(self, evefile=None):
         super().__init__(evefile=evefile)
 
+    def _join(self, data=None):
+        result = []
+        return result
+
     # pylint: disable-next=too-many-locals
-    def _join(self, data=None, axes=None, scan_module=None):
+    def _join_legacy(self, data=None, axes=None, scan_module=None):
         result = []
         data_device = self.evefile.data[data[0]]
         axes_devices = [self.evefile.data[axis[0]] for axis in axes]
