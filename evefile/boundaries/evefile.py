@@ -145,7 +145,7 @@ import os
 
 from evefile.entities.file import File
 from evefile.boundaries.eveh5 import HDF5File
-from evefile.controllers import version_mapping
+from evefile.controllers import version_mapping, joining
 
 
 logger = logging.getLogger(__name__)
@@ -258,6 +258,7 @@ class EveFile(File):
     def __init__(self, filename="", load=True):
         super().__init__()
         self.filename = filename
+        self._join_factory = joining.JoinFactory(evefile=self)
         if load:
             if not filename:
                 raise ValueError("No filename given")
@@ -390,24 +391,31 @@ class EveFile(File):
             ]
         return output
 
-    def get_joined_data(self, data=[], mode="AxesLastFill"):
+    def get_joined_data(self, data=None, mode="AxisOrChannelPositions"):
         """
         Retrieve data objects with commensurate dimensions.
 
-        .. warning::
-
-            No implementation yet... only method signature and description.
-
+        For details on joining see the :mod:`joining
+        <evefile.controllers.joining>` module.
 
         Parameters
         ----------
         data : :class:`list`
-            Names of data or actual data objects whose data should be joined.
+            (Names/IDs of) data objects whose data should be joined.
+
+            You can provide either names or IDs or the actual data objects.
+
+            If no data are given, by default all data available will be
+            joined.
+
+            Default: :obj:`None`
 
         mode : :class:`str`
             Name of the join mode to be used. This must be a mode
             understood by the :class:`JoinFactory
             <evefile.controllers.joining.JoinFactory>`.
+
+            Default: "AxisOrChannelPositions"
 
         Returns
         -------
@@ -418,4 +426,7 @@ class EveFile(File):
             :class:`evefile.entities.data.MeasureData`.
 
         """
-        return []
+        if not data:
+            data = list(self.data.values())
+        joiner = self._join_factory.get_join(mode=mode)
+        return joiner.join(data)

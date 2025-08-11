@@ -493,7 +493,7 @@ class Join:
     accordingly.
 
     As there are different strategies how to deal with gaps in the
-    positions list, generally, there will be different subclasses of the
+    positions list, generally, there are different subclasses of the
     :class:`Join` class dealing each with a particular strategy.
 
 
@@ -579,9 +579,12 @@ class Join:
         if not data:
             raise ValueError("Need data to join data.")
         data = [
-            self._convert_str_to_data_object(item)
+            (
+                self._convert_str_to_data_object(item)
+                if isinstance(item, str)
+                else item
+            )
             for item in data
-            if isinstance(item, str)
         ]
         return self._join(data=data)
 
@@ -646,12 +649,18 @@ class Join:
                 positions = np.setdiff1d(
                     self._result_positions, channel.position_counts
                 )
-                channel.data[channel.position_counts.astype(np.int64)] = (
-                    original_values
-                )
+                channel.data[
+                    np.searchsorted(
+                        self._result_positions, channel.position_counts
+                    ).astype(np.int64)
+                ] = original_values
                 channel.data[positions] = ma.masked
             elif len(self._result_positions) < len(channel.position_counts):
-                channel.data = channel.data[self._result_positions]
+                channel.data = channel.data[
+                    np.searchsorted(
+                        channel.position_counts, self._result_positions
+                    ).astype(np.int64)
+                ]
             channel.position_counts = self._result_positions
 
     def _assign_result(self):

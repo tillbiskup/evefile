@@ -34,7 +34,7 @@ class DummyHDF5File:
                     ),
                 ),
             )
-            simmot["PosCounter"] = np.linspace(1, 5, 5)
+            simmot["PosCounter"] = np.linspace(2, 6, 5)
             simmot["SimMot:01"] = np.random.random(5)
             simmot.attrs["Name"] = np.bytes_(["foo"])
             simmot.attrs["Access"] = np.bytes_(["ca:foobar"])
@@ -48,14 +48,14 @@ class DummyHDF5File:
                     ),
                 ),
             )
-            simchan["PosCounter"] = np.linspace(1, 5, 5)
+            simchan["PosCounter"] = np.linspace(4, 8, 5)
             simchan["SimChan:01"] = np.random.random(5)
             simchan.attrs["Name"] = np.bytes_(["bar"])
             simchan.attrs["Access"] = np.bytes_(["ca:barbaz"])
             simchan.attrs["DeviceType"] = np.bytes_(["Channel"])
             simchan.attrs["Detectortype"] = np.bytes_(["Standard"])
             data = np.ndarray(
-                [10],
+                [9],
                 dtype=np.dtype(
                     [("PosCounter", "<i4"), ("PosCountTimer", "<i4")]
                 ),
@@ -69,6 +69,7 @@ class DummyHDF5File:
                     ["SimChan:01"]
                 )
             if add_snapshot:
+                snapshot = c1.create_group("snapshot")
                 simmot = snapshot.create_dataset(
                     "SimMot:01",
                     data=np.ndarray(
@@ -247,3 +248,44 @@ class TestEveFile(unittest.TestCase):
         h5file.create()
         self.evefile = evefile.EveFile(filename=self.filename)
         self.assertIsInstance(self.evefile.get_joined_data(), list)
+
+    def test_get_joined_data_returns_data_objects(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        result = self.evefile.get_joined_data()
+        self.assertTrue(result)
+        for item in result:
+            self.assertIsInstance(item, evefile.entities.data.MeasureData)
+
+    def test_get_joined_data_by_default_returns_all_data_objects(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        result = self.evefile.get_joined_data()
+        self.assertTrue(result)
+        self.assertEqual(len(self.evefile.data), len(result))
+
+    def test_get_joined_data_joins_data(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        result = self.evefile.get_joined_data()
+        positions = np.union1d(
+            self.evefile.data["SimMot:01"].position_counts,
+            self.evefile.data["SimChan:01"].position_counts,
+        )
+        for item in result:
+            self.assertEqual(len(positions), len(item.position_counts))
+
+    def test_get_joined_data_uses_correct_mode(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        result = self.evefile.get_joined_data(mode="AxisAndChannelPositions")
+        positions = np.intersect1d(
+            self.evefile.data["SimMot:01"].position_counts,
+            self.evefile.data["SimChan:01"].position_counts,
+        )
+        for item in result:
+            self.assertEqual(len(positions), len(item.position_counts))

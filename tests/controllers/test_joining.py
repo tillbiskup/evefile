@@ -107,6 +107,26 @@ class TestJoin(unittest.TestCase):
         result = self.join.join(data=["SimChan:01", "SimMot:01"])
         self.assertIsInstance(result, list)
 
+    def test_join_with_data(self):
+        class MyJoin(joining.Join):
+            def _join(self, data=None):
+                return data
+
+        self.join = MyJoin()
+        self.join.evefile = self.evefile
+        self.join.evefile.data = {
+            "SimChan:01": MockChannel(
+                data=np.random.random(5), positions=np.linspace(0, 4, 5)
+            ),
+            "SimMot:01": MockAxis(
+                data=np.random.random(7), positions=np.linspace(0, 6, 7)
+            ),
+        }
+        result = self.join.join(data=list(self.join.evefile.data.values()))
+        self.assertTrue(result)
+        for item in result:
+            self.assertIsInstance(item, evefile.entities.data.MeasureData)
+
     def test_join_with_ids_converts_to_datasets(self):
         class MyJoin(joining.Join):
             def _join(self, data=None):
@@ -417,9 +437,17 @@ class TestAxisAndChannelPositions(unittest.TestCase):
         positions = np.intersect1d(
             self.join.evefile.data["SimChan:01"].position_counts,
             self.join.evefile.data["SimMot:01"].position_counts,
-        )
+        ).astype(np.int64)
         for item in result:
             self.assertEqual(len(positions), len(item.data))
+        np.testing.assert_array_equal(
+            result[0].data,
+            self.join.evefile.data["SimMot:01"].data[2:6],
+        )
+        np.testing.assert_array_equal(
+            result[1].data,
+            self.join.evefile.data["SimChan:01"].data[0:3],
+        )
 
 
 class TestAxisOrChannelPositions(unittest.TestCase):
