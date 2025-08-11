@@ -396,6 +396,58 @@ class TestAxisPositions(unittest.TestCase):
         self.assertEqual(len(result[0].data), len(result[1].data))
 
 
+class TestAxisAndChannelPositions(unittest.TestCase):
+    def setUp(self):
+        self.join = joining.AxisAndChannelPositions()
+        self.join.evefile = MockEveFile()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_join_returns_only_values_for_intersection_positions(self):
+        self.join.evefile.data = {
+            "SimMot:01": MockAxis(
+                data=np.random.random(5), positions=np.linspace(0, 4, 5)
+            ),
+            "SimChan:01": MockChannel(
+                data=np.random.random(7), positions=np.linspace(2, 8, 7)
+            ),
+        }
+        result = self.join.join(data=["SimMot:01", "SimChan:01"])
+        positions = np.intersect1d(
+            self.join.evefile.data["SimChan:01"].position_counts,
+            self.join.evefile.data["SimMot:01"].position_counts,
+        )
+        for item in result:
+            self.assertEqual(len(positions), len(item.data))
+
+
+class TestAxisOrChannelPositions(unittest.TestCase):
+    def setUp(self):
+        self.join = joining.AxisOrChannelPositions()
+        self.join.evefile = MockEveFile()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_join_returns_only_values_for_union_positions(self):
+        self.join.evefile.data = {
+            "SimMot:01": MockAxis(
+                data=np.random.random(5), positions=np.linspace(0, 4, 5)
+            ),
+            "SimChan:01": MockChannel(
+                data=np.random.random(7), positions=np.linspace(2, 8, 7)
+            ),
+        }
+        result = self.join.join(data=["SimMot:01", "SimChan:01"])
+        positions = np.union1d(
+            self.join.evefile.data["SimChan:01"].position_counts,
+            self.join.evefile.data["SimMot:01"].position_counts,
+        )
+        for item in result:
+            self.assertEqual(len(positions), len(item.data))
+
+
 class TestJoinFactory(unittest.TestCase):
     def setUp(self):
         self.factory = joining.JoinFactory()

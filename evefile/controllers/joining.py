@@ -355,7 +355,7 @@ A few comments for further development
 Join modes currently implemented
 ================================
 
-Currently, there is exactly one join mode implemented:
+Currently, the following join modes are implemented:
 
 * :class:`ChannelPositions`
 
@@ -375,6 +375,66 @@ Currently, there is exactly one join mode implemented:
   Furthermore, for each channel where no value exists for any of the
   positions from the position list, the data are converted into a
   :obj:`numpy.ma.MaskedArray` object and the value(s) masked.
+
+* :class:`AxisPositions`
+
+  Return values for all positions where at least one axis was set.
+
+  The resulting position list is the set union of positions of all given
+  axes. This means that for each position where at least one axis
+  was set, this position is included in the list.
+
+  This was **previously known as "NaNFill" mode** and was described as
+  "Use all axis data and fill in NaN for all channels without values."
+  In SQL terms (relational database), this would be similar to a left
+  join with axes left and channels right, but additionally
+  explicitly setting the missing axes values in the join to the last
+  known axis value. If no previous axes value is available, convert the
+  data into a :obj:`numpy.ma.MaskedArray` object and mask the value.
+  Furthermore, for each channel where no value exists for any of the
+  positions from the position list, the data are converted into a
+  :obj:`numpy.ma.MaskedArray` object and the value(s) masked.
+
+* :class:`AxisAndChannelPositions`
+
+  Return values for all positions where axis *and* channel values exist.
+
+  The resulting position list is the set intersection of positions of all
+  given channels and axes. This means that for each position where at least
+  one axis was set *and* one channel recorded, this position is included in
+  the list.
+
+  This was **previously known as "NoFill" mode** and was described as
+  "Use only data from positions where at least one axis and one channel
+  have values." In SQL terms (relational database), this would be
+  similar to an inner join, but additionally explicitly setting the
+  missing axes values in the join to the last known axis value. If no
+  previous axes value is available, convert the data into a
+  :obj:`numpy.ma.MaskedArray` object and mask the value. Furthermore,
+  for each channel where no value exists for any of the positions from
+  the position list, the data are converted into a
+  :obj:`numpy.ma.MaskedArray` object and the value(s) masked.
+
+* :class:`AxisOrChannelPositions`
+
+  Return values for all positions where axis *or* channel values exist.
+
+  The resulting position list is the set union of positions of all
+  given channels and axes. This means that for each position where at least
+  one axis was set *or* one channel recorded, this position is included in
+  the list.
+
+  This was **previously known as "LastNaNFill" mode** and was described as
+  "Use all data and fill in NaN for all channels without values and fill
+  in the last known position for all axes without values." In SQL terms
+  (relational database), this would be similar to an outer join,
+  but additionally explicitly setting the missing axes values in the
+  join to the last known axis value. If no previous axes value is
+  available, convert the data into a :obj:`numpy.ma.MaskedArray` object
+  and mask the value. Furthermore, for each channel where no value
+  exists for any of the positions from the position list, the data are
+  converted into a :obj:`numpy.ma.MaskedArray` object and the value(s)
+  masked.
 
 
 For developers
@@ -782,6 +842,199 @@ class AxisPositions(Join):
     def _assign_result_positions(self):
         axis_positions = [item.position_counts for item in self._axes]
         self._result_positions = reduce(np.union1d, axis_positions).astype(
+            np.int64
+        )
+
+
+class AxisAndChannelPositions(Join):
+    """
+    Return values for all positions where axis *and* channel values exist.
+
+    The resulting position list is the set intersection of positions of all
+    given channels and axes. This means that for each position where at least
+    one axis was set *and* one channel recorded, this position is included in
+    the list.
+
+    This was **previously known as "NoFill" mode** and was described as
+    "Use only data from positions where at least one axis and one channel
+    have values." In SQL terms (relational database), this would be
+    similar to an inner join, but additionally explicitly setting the
+    missing axes values in the join to the last known axis value. If no
+    previous axes value is available, convert the data into a
+    :obj:`numpy.ma.MaskedArray` object and mask the value. Furthermore,
+    for each channel where no value exists for any of the positions from
+    the position list, the data are converted into a
+    :obj:`numpy.ma.MaskedArray` object and the value(s) masked.
+
+    In more detail, the following happens to each individual data object,
+    separated by type of data:
+
+    Channels:
+
+    * The position list is the set intersection of positions of all given
+      axes and channels.
+    * Positions where no value was recorded for a given channel are set as
+      missing ("masked" in NumPy terminology), the resulting data array is of
+      type :class:`numpy.ma.MaskedArray`.
+
+    Axes:
+
+    * The position list is the set intersection of positions of all given
+      axes and channels.
+    * For values originally missing for an axis, the last value of the
+      previous position is used.
+    * If no previous value exists for a missing value, the data are
+      converted into a :obj:`numpy.ma.MaskedArray` object and the values
+      masked with :data:`numpy.ma.masked`.
+    * The snapshots are checked for values corresponding to the axis,
+      and if present, are taken into account. If there is more than one
+      snapshot, always the newest snapshot previous to the current axis
+      position will be used.
+
+    Of course, as in all cases, the (integer) positions are used as common
+    reference for the values of all devices.
+
+    Attributes
+    ----------
+    evefile : :class:`evefile.boundaries.evefile.EveFile`
+        EveFile object the join should be performed for.
+
+        Although joining may only be carried out for a small subset of the
+        data of an EveFile object, additional information from the
+        EveFile object may be necessary to perform the task, *e.g.*,
+        the snapshots.
+
+    Parameters
+    ----------
+    evefile : :class:`evefile.boundaries.evefile.EveFile`
+        EveFile the join should be performed for.
+
+
+    Examples
+    --------
+    Usually, joining takes place in the :meth:`get_joined_data()
+    <evefile.boundaries.evefile.EveFile.get_joined_data>`
+    method of the :class:`EveFile <evefile.boundaries.evefile.EveFile>` class.
+
+    To join data, call :meth:`join` with a list of data objects or data
+    object names, respectively:
+
+    .. code-block::
+
+        join = AxisAndChannelPositions(evefile=my_evefile)
+        # Call with data object names
+        joined_data = join.join(["name1", "name2"])
+        # Call with data objects
+        joined_data = join.join(
+            [my_evefile.data["id1"], my_evefile.data["id2"]]
+        )
+
+    Note that the joined data objects appear in the same order as you
+    provided them or their names/IDs to the :meth:`join` method.
+
+    """
+
+    def _assign_result_positions(self):
+        positions = [item.position_counts for item in self._axes]
+        positions.extend([item.position_counts for item in self._channels])
+        self._result_positions = reduce(np.intersect1d, positions).astype(
+            np.int64
+        )
+
+
+class AxisOrChannelPositions(Join):
+    """
+    Return values for all positions where axis *or* channel values exist.
+
+    The resulting position list is the set union of positions of all
+    given channels and axes. This means that for each position where at least
+    one axis was set *or* one channel recorded, this position is included in
+    the list.
+
+    This was **previously known as "LastNaNFill" mode** and was described as
+    "Use all data and fill in NaN for all channels without values and fill
+    in the last known position for all axes without values." In SQL terms
+    (relational database), this would be similar to an outer join,
+    but additionally explicitly setting the missing axes values in the
+    join to the last known axis value. If no previous axes value is
+    available, convert the data into a :obj:`numpy.ma.MaskedArray` object
+    and mask the value. Furthermore, for each channel where no value
+    exists for any of the positions from the position list, the data are
+    converted into a :obj:`numpy.ma.MaskedArray` object and the value(s)
+    masked.
+
+    In more detail, the following happens to each individual data object,
+    separated by type of data:
+
+    Channels:
+
+    * The position list is the set union of positions of all given axes
+      and channels.
+    * Positions where no value was recorded for a given channel are set as
+      missing ("masked" in NumPy terminology), the resulting data array is of
+      type :class:`numpy.ma.MaskedArray`.
+
+    Axes:
+
+    * The position list is the set union of positions of all given axes
+      and channels.
+    * For values originally missing for an axis, the last value of the
+      previous position is used.
+    * If no previous value exists for a missing value, the data are
+      converted into a :obj:`numpy.ma.MaskedArray` object and the values
+      masked with :data:`numpy.ma.masked`.
+    * The snapshots are checked for values corresponding to the axis,
+      and if present, are taken into account. If there is more than one
+      snapshot, always the newest snapshot previous to the current axis
+      position will be used.
+
+    Of course, as in all cases, the (integer) positions are used as common
+    reference for the values of all devices.
+
+    Attributes
+    ----------
+    evefile : :class:`evefile.boundaries.evefile.EveFile`
+        EveFile object the join should be performed for.
+
+        Although joining may only be carried out for a small subset of the
+        data of an EveFile object, additional information from the
+        EveFile object may be necessary to perform the task, *e.g.*,
+        the snapshots.
+
+    Parameters
+    ----------
+    evefile : :class:`evefile.boundaries.evefile.EveFile`
+        EveFile the join should be performed for.
+
+
+    Examples
+    --------
+    Usually, joining takes place in the :meth:`get_joined_data()
+    <evefile.boundaries.evefile.EveFile.get_joined_data>`
+    method of the :class:`EveFile <evefile.boundaries.evefile.EveFile>` class.
+
+    To join data, call :meth:`join` with a list of data objects or data
+    object names, respectively:
+
+    .. code-block::
+
+        join = AxisOrChannelPositions(evefile=my_evefile)
+        # Call with data object names
+        joined_data = join.join(["name1", "name2"])
+        # Call with data objects
+        joined_data = join.join(
+            [my_evefile.data["id1"], my_evefile.data["id2"]]
+        )
+
+    Note that the joined data objects appear in the same order as you
+    provided them or their names/IDs to the :meth:`join` method.
+
+    """
+
+    def _assign_result_positions(self):
+        positions = [item.position_counts for item in self._axes]
+        positions.extend([item.position_counts for item in self._channels])
+        self._result_positions = reduce(np.union1d, positions).astype(
             np.int64
         )
 
