@@ -14,3 +14,13 @@ Not yet released
 
 * ...
 
+
+Version 0.1.0-rc.1
+==================
+
+Not yet released
+
+* First public pre-release (release candidate)
+* Basic import of eveH5 files down to eveH5 version 5
+* Mapping of HDF5 datasets to data objects
+* Dataset/array joining (aka "fill modes")
