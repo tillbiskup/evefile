@@ -18,7 +18,7 @@ Not yet released
 Version 0.1.0-rc.1
 ==================
 
-Not yet released
+Released 2025-08-12
 
 * First public pre-release (release candidate)
 * Basic import of eveH5 files down to eveH5 version 5
