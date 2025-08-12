@@ -70,16 +70,17 @@ Loading the contents of a data file of a measurement may be as simple as:
 
     evefile = EveFile(filename="my_measurement_file.h5")
 
-If you are interested in a convenient overview of the metadata contained in
-the eveH5 file just loaded, try this:
+If you are interested in a convenient overview of the contents of the
+eveH5 file just loaded, try this:
 
 .. code-block::
 
-    print(evefile.metadata)
+    evefile.show_info()
 
-This will output a human-readable summary of the file metadata. See
-the documentation of the :class:`Metadata <evefile.entities.file.Metadata>`
-class for details.
+This will output a human-readable summary of the file metadata,
+log messages, and a list of datasets in the data, snapshot, and monitor
+section. See the documentation of the :meth:`EveFile.show_info` method for
+details.
 
 Data are stored within a :class:`EveFile` object with their IDs rather than
 the "given" names users are familiar with. Hence, to get an overview of all
@@ -430,3 +431,64 @@ class EveFile(File):
             data = list(self.data.values())
         joiner = self._join_factory.get_join(mode=mode)
         return joiner.join(data)
+
+    def show_info(self):
+        """
+        Print basic information regarding the contents of the loaded file.
+
+        Often, it is convenient to get a brief overview of the contents of
+        a file after it has been loaded. The output of this method
+        currently contains the following sections:
+
+        * metadata
+        * log messages
+        * data
+        * snapshots
+        * monitors
+
+        The output could look similar to the following:
+
+        .. code-block:: bash
+
+            METADATA
+                                   filename: file.h5
+                              eveh5_version: 7
+                                eve_version: 2.0
+                                xml_version: 9.2
+                        measurement_station: Unittest
+                                      start: 2024-06-03 12:01:32
+                                        end: 2024-06-03 12:01:37
+                                description:
+                                 simulation: False
+                             preferred_axis: SimMot:01
+                          preferred_channel: SimChan:01
+            preferred_normalisation_channel: SimChan:01
+
+            LOG MESSAGES
+
+            DATA
+            SimMot:01
+            SimChan:01
+
+            SNAPSHOTS
+            SimChan:01
+            SimChan:03
+            SimMot:01
+
+            MONITORS
+
+        """
+        print("METADATA")
+        print(self.metadata)
+        print(f"\nLOG MESSAGES")
+        for message in self.log_messages:
+            print(message)
+        print(f"\nDATA")
+        for item in self.data:
+            print(item)
+        print(f"\nSNAPSHOTS")
+        for item in self.snapshots:
+            print(item)
+        print(f"\nMONITORS")
+        for item in self.monitors:
+            print(item)

@@ -1,11 +1,14 @@
+import contextlib
 import os
 import unittest
+from io import StringIO
 
 import h5py
 import numpy as np
 
 from evefile.boundaries import evefile
 import evefile.entities.data
+import evefile.entities.file
 
 
 class DummyHDF5File:
@@ -289,3 +292,60 @@ class TestEveFile(unittest.TestCase):
         )
         for item in result:
             self.assertEqual(len(positions), len(item.position_counts))
+
+    def test_show_info_prints_metadata(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.evefile.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("METADATA", output)
+        self.assertIn("filename: ", output)
+
+    def test_show_info_prints_log_messages(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        log_message = evefile.entities.file.LogMessage()
+        log_message.from_string("20250812T09:06:05: Lorem ipsum")
+        self.evefile.log_messages.append(log_message)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.evefile.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("LOG MESSAGES", output)
+        self.assertIn(": Lorem ipsum", output)
+
+    def test_show_info_prints_data(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.evefile.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn(f"\nDATA", output)
+
+    def test_show_info_prints_snapshots(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(set_preferred=True, add_snapshot=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.evefile.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn(f"\nSNAPSHOTS", output)
+
+    def test_show_info_prints_monitors(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(set_preferred=True, add_snapshot=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.evefile.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn(f"\nMONITORS", output)
+
+        print(output)
