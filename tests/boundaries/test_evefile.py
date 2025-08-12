@@ -388,3 +388,21 @@ class TestEveFile(unittest.TestCase):
             list(dataframe.columns),
             [self.evefile.data[data_name].metadata.name],
         )
+
+    def test_dataframe_contains_index_name(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        dataframe = self.evefile.get_dataframe()
+        self.assertEqual("PosRef", dataframe.index.name)
+
+    def test_get_dataframe_uses_correct_mode(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        dataframe = self.evefile.get_dataframe(mode="AxisAndChannelPositions")
+        positions = np.intersect1d(
+            self.evefile.data["SimMot:01"].position_counts,
+            self.evefile.data["SimChan:01"].position_counts,
+        )
+        self.assertEqual(len(positions), len(dataframe.index))

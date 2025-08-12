@@ -434,7 +434,7 @@ class EveFile(File):
         joiner = self._join_factory.get_join(mode=mode)
         return joiner.join(data)
 
-    def get_dataframe(self, data=None):
+    def get_dataframe(self, data=None, mode="AxisOrChannelPositions"):
         """
         Retrieve Pandas DataFrame with given data objects as columns.
 
@@ -466,6 +466,13 @@ class EveFile(File):
 
             Default: :obj:`None`
 
+        mode : :class:`str`
+            Name of the join mode to be used. This must be a mode
+            understood by the :class:`JoinFactory
+            <evefile.controllers.joining.JoinFactory>`.
+
+            Default: "AxisOrChannelPositions"
+
         Returns
         -------
         dataframe : :class:`pandas.DataFrame`
@@ -477,10 +484,11 @@ class EveFile(File):
         """
         if not data:
             data = list(self.data.values())
-        joined_data = self.get_joined_data(data)
+        joined_data = self.get_joined_data(data=data, mode=mode)
         dataframe = pd.DataFrame(
             {item.metadata.name: item.data for item in joined_data}
         )
+        dataframe.index.name = "PosRef"
         return dataframe
 
     def show_info(self):
