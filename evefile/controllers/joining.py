@@ -654,7 +654,11 @@ class Join:
                         self._result_positions, channel.position_counts
                     ).astype(np.int64)
                 ] = original_values
-                channel.data[positions] = ma.masked
+                channel.data[
+                    np.searchsorted(self._result_positions, positions).astype(
+                        np.int64
+                    )
+                ] = ma.masked
             elif len(self._result_positions) < len(channel.position_counts):
                 channel.data = channel.data[
                     np.searchsorted(

@@ -144,6 +144,8 @@ Module documentation
 import logging
 import os
 
+import pandas as pd
+
 from evefile.entities.file import File
 from evefile.boundaries.eveh5 import HDF5File
 from evefile.controllers import version_mapping, joining
@@ -432,6 +434,15 @@ class EveFile(File):
         joiner = self._join_factory.get_join(mode=mode)
         return joiner.join(data)
 
+    def get_dataframe(self, data=None):
+        if not data:
+            data = list(self.data.values())
+        joined_data = self.get_joined_data(data)
+        dataframe = pd.DataFrame(
+            {item.metadata.name: item.data for item in joined_data}
+        )
+        return dataframe
+
     def show_info(self):
         """
         Print basic information regarding the contents of the loaded file.
@@ -448,7 +459,7 @@ class EveFile(File):
 
         The output could look similar to the following:
 
-        .. code-block:: bash
+        .. code-block:: none
 
             METADATA
                                    filename: file.h5
@@ -465,6 +476,7 @@ class EveFile(File):
             preferred_normalisation_channel: SimChan:01
 
             LOG MESSAGES
+            20250812T09:06:05: Lorem ipsum
 
             DATA
             foo (SimMot:01) <AxisData>

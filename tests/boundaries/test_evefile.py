@@ -5,6 +5,7 @@ from io import StringIO
 
 import h5py
 import numpy as np
+import pandas as pd
 
 from evefile.boundaries import evefile
 import evefile.entities.data
@@ -348,3 +349,42 @@ class TestEveFile(unittest.TestCase):
         output = temp_stdout.getvalue().strip()
         self.assertIn(f"\nMONITORS", output)
         # print(output)
+
+    def test_get_dataframe_returns_dataframe(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(set_preferred=True, add_snapshot=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        dataframe = self.evefile.get_dataframe()
+        self.assertIsInstance(dataframe, pd.DataFrame)
+
+    def test_dataframe_by_default_contains_all_data_objects(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        dataframe = self.evefile.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            [item.metadata.name for item in self.evefile.data.values()],
+        )
+
+    def test_dataframe_with_name_of_data_object(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        data_name = "foo"
+        dataframe = self.evefile.get_dataframe(data=[data_name])
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(list(dataframe.columns), [data_name])
+
+    def test_dataframe_with_id_of_data_object(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        data_name = "SimMot:01"
+        dataframe = self.evefile.get_dataframe(data=[data_name])
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            [self.evefile.data[data_name].metadata.name],
+        )
