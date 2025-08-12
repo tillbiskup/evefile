@@ -1,6 +1,8 @@
+import contextlib
 import logging
 import os
 import unittest
+from io import StringIO
 
 import h5py
 import numpy as np
@@ -169,6 +171,14 @@ class TestData(unittest.TestCase):
         ):
             self.data.copy_attributes_from()
 
+    def test_print_prints_human_friendly_output(self):
+        self.data.metadata.name = "foo"
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.data)
+        output = temp_stdout.getvalue().strip()
+        self.assertEqual(f"{self.data.metadata.name} <Data>", output)
+
 
 class TestMonitorData(unittest.TestCase):
     def setUp(self):
@@ -190,6 +200,19 @@ class TestMonitorData(unittest.TestCase):
 
     def test_metadata_are_of_corresponding_type(self):
         self.assertIsInstance(self.data.metadata, metadata.MonitorMetadata)
+
+    def test_print_prints_human_friendly_output(self):
+        self.data.metadata.name = "foo"
+        self.data.metadata.id = "foo:42"
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.data)
+        output = temp_stdout.getvalue().strip()
+        self.assertEqual(
+            f"{self.data.metadata.name} ("
+            f"{self.data.metadata.id}) <MonitorData>",
+            output,
+        )
 
 
 class TestMeasureData(unittest.TestCase):
@@ -256,6 +279,19 @@ class TestMeasureData(unittest.TestCase):
         self.mock_data.position_counts = np.random.random(5)
         _ = self.mock_data.position_counts
         self.assertFalse(self.mock_data.get_data_called)
+
+    def test_print_prints_human_friendly_output(self):
+        self.data.metadata.name = "foo"
+        self.data.metadata.id = "foo:42"
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.data)
+        output = temp_stdout.getvalue().strip()
+        self.assertEqual(
+            f"{self.data.metadata.name} ("
+            f"{self.data.metadata.id}) <MeasureData>",
+            output,
+        )
 
 
 class TestDeviceData(unittest.TestCase):

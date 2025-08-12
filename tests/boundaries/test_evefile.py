@@ -347,5 +347,4 @@ class TestEveFile(unittest.TestCase):
             self.evefile.show_info()
         output = temp_stdout.getvalue().strip()
         self.assertIn(f"\nMONITORS", output)
-
-        print(output)
+        # print(output)

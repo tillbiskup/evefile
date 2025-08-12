@@ -194,6 +194,18 @@ class Data:
         self.importer = []
         self._data = None
 
+    def __str__(self):
+        """
+        Human-readable representation of the class/object.
+
+        Returns
+        -------
+        output : :class:`str`
+            String containing name and class name
+
+        """
+        return f"{self.metadata.name} <{type(self).__name__}>"
+
     @property
     def data(self):
         """
@@ -329,6 +341,21 @@ class MonitorData(Data):
         self.metadata = metadata.MonitorMetadata()
         self.milliseconds = np.ndarray(shape=[], dtype=int)
 
+    def __str__(self):
+        """
+        Human-readable representation of the class/object.
+
+        Returns
+        -------
+        output : :class:`str`
+            String containing name and class name
+
+        """
+        return (
+            f"{self.metadata.name} ({self.metadata.id}) "
+            f"<{type(self).__name__}>"
+        )
+
 
 class MeasureData(Data):
     """
@@ -365,6 +392,21 @@ class MeasureData(Data):
         super().__init__()
         self.metadata = metadata.MeasureMetadata()
         self._position_counts = None
+
+    def __str__(self):
+        """
+        Human-readable representation of the class/object.
+
+        Returns
+        -------
+        output : :class:`str`
+            String containing name and class name
+
+        """
+        return (
+            f"{self.metadata.name} ({self.metadata.id}) "
+            f"<{type(self).__name__}>"
+        )
 
     @property
     def position_counts(self):

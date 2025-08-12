@@ -467,13 +467,13 @@ class EveFile(File):
             LOG MESSAGES
 
             DATA
-            SimMot:01
-            SimChan:01
+            foo (SimMot:01) <AxisData>
+            bar (SimChan:01) <SinglePointChannelData>
 
             SNAPSHOTS
-            SimChan:01
-            SimChan:03
-            SimMot:01
+            bar (SimChan:01) <AxisData>
+            bazfoo (SimChan:03) <AxisData>
+            foo (SimMot:01) <AxisData>
 
             MONITORS
 
@@ -484,11 +484,11 @@ class EveFile(File):
         for message in self.log_messages:
             print(message)
         print(f"\nDATA")
-        for item in self.data:
+        for item in self.data.values():
             print(item)
         print(f"\nSNAPSHOTS")
-        for item in self.snapshots:
+        for item in self.snapshots.values():
             print(item)
         print(f"\nMONITORS")
-        for item in self.monitors:
+        for item in self.monitors.values():
             print(item)
