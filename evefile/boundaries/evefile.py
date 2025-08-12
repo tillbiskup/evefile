@@ -435,6 +435,46 @@ class EveFile(File):
         return joiner.join(data)
 
     def get_dataframe(self, data=None):
+        """
+        Retrieve Pandas DataFrame with given data objects as columns.
+
+        Internally, the :meth:`get_joined_data` method will be called with
+        the data provided. If the ``data`` parameter is omitted,
+        all datasets will be used.
+
+        The names of the columns of the returned DataFrame are the names (not
+        IDs) of the respective datasets.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+
+        Parameters
+        ----------
+        data : :class:`list`
+            (Names/IDs of) data objects whose data should be joined.
+
+            You can provide either names or IDs or the actual data objects.
+
+            If no data are given, by default all data available will be
+            joined.
+
+            Default: :obj:`None`
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing the given data objects as columns.
+
+            The names of the columns are the names (not IDs) of the
+            respective datasets.
+
+        """
         if not data:
             data = list(self.data.values())
         joined_data = self.get_joined_data(data)
@@ -492,15 +532,15 @@ class EveFile(File):
         """
         print("METADATA")
         print(self.metadata)
-        print(f"\nLOG MESSAGES")
+        print("\nLOG MESSAGES")
         for message in self.log_messages:
             print(message)
-        print(f"\nDATA")
+        print("\nDATA")
         for item in self.data.values():
             print(item)
-        print(f"\nSNAPSHOTS")
+        print("\nSNAPSHOTS")
         for item in self.snapshots.values():
             print(item)
-        print(f"\nMONITORS")
+        print("\nMONITORS")
         for item in self.monitors.values():
             print(item)
