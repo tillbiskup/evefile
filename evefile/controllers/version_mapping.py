@@ -607,7 +607,7 @@ class VersionMapper:
             self.datasets2map_in_snapshot.remove(item)
 
     def _map_channel_snapshot_dataset(self, hdf5_dataset=None):
-        dataset = entities.data.AxisData()
+        dataset = entities.data.ChannelData()
         importer_mapping = {
             0: "position_counts",
             1: "data",
