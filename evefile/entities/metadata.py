@@ -125,6 +125,37 @@ class Metadata:
         super().__init__()
         self.name = ""
         self.options = {}
+        # Note: Attributes are listed manually here for explicit ordering in
+        #       string representation using self.__str__
+        # Use only append or extend in subclasses!
+        self._attributes = ["name"]
+
+    def __str__(self):
+        """
+        Human-readable representation of the metadata.
+
+        Returns
+        -------
+        output : :class:`str`
+            Multiline string with one attribute per line
+
+        """
+        output = []
+        attribute_name_length = max(
+            len(attribute) for attribute in self._attributes
+        )
+        for attribute in self._attributes:
+            output.append(
+                f"{attribute:>{attribute_name_length}}:"
+                f" {getattr(self, attribute)}"
+            )
+        if self.options:
+            key_name_length = max(len(key) for key in self.options)
+            output.append("")
+            output.append("SCALAR OPTIONS")
+            for key, value in self.options.items():
+                output.append(f"{key:>{key_name_length}}:" f" {value}")
+        return "\n".join(output)
 
     def copy_attributes_from(self, source=None):
         """
@@ -223,6 +254,10 @@ class MonitorMetadata(Metadata, AbstractDeviceMetadata):
 
     """
 
+    def __init__(self):
+        super().__init__()
+        self._attributes.extend(["id", "pv", "access_mode"])
+
 
 class MeasureMetadata(Metadata):
     """
@@ -252,6 +287,7 @@ class MeasureMetadata(Metadata):
     def __init__(self):
         super().__init__()
         self.unit = ""
+        self._attributes.append("unit")
 
 
 class DeviceMetadata(MeasureMetadata, AbstractDeviceMetadata):
@@ -272,6 +308,10 @@ class DeviceMetadata(MeasureMetadata, AbstractDeviceMetadata):
     you can instantiate an object as usual.
 
     """
+
+    def __init__(self):
+        super().__init__()
+        self._attributes.extend(["id", "pv", "access_mode"])
 
 
 class AxisMetadata(MeasureMetadata, AbstractDeviceMetadata):
@@ -295,6 +335,7 @@ class AxisMetadata(MeasureMetadata, AbstractDeviceMetadata):
     def __init__(self):
         super().__init__()
         self.deadband = 0.0
+        self._attributes.extend(["id", "pv", "access_mode", "deadband"])
 
 
 class ChannelMetadata(MeasureMetadata, AbstractDeviceMetadata):
@@ -315,6 +356,10 @@ class ChannelMetadata(MeasureMetadata, AbstractDeviceMetadata):
     you can instantiate an object as usual.
 
     """
+
+    def __init__(self):
+        super().__init__()
+        self._attributes.extend(["id", "pv", "access_mode"])
 
 
 class TimestampMetadata(MeasureMetadata):
@@ -407,6 +452,9 @@ class AverageChannelMetadata(ChannelMetadata):
         self.low_limit = 0.0
         self.max_attempts = 0
         self.max_deviation = 0.0
+        self._attributes.extend(
+            ["n_averages", "low_limit", "max_attempts", "max_deviation"]
+        )
 
 
 class IntervalChannelMetadata(ChannelMetadata):
@@ -437,6 +485,7 @@ class IntervalChannelMetadata(ChannelMetadata):
     def __init__(self):
         super().__init__()
         self.trigger_interval = 0.0
+        self._attributes.append("trigger_interval")
 
 
 class NormalizedChannelMetadata:
@@ -486,6 +535,10 @@ class SinglePointNormalizedChannelMetadata(
 
     """
 
+    def __init__(self):
+        super().__init__()
+        self._attributes.extend(["normalize_id"])
+
 
 class AverageNormalizedChannelMetadata(
     ChannelMetadata, NormalizedChannelMetadata
@@ -508,6 +561,10 @@ class AverageNormalizedChannelMetadata(
 
     """
 
+    def __init__(self):
+        super().__init__()
+        self._attributes.extend(["normalize_id"])
+
 
 class IntervalNormalizedChannelMetadata(
     ChannelMetadata, NormalizedChannelMetadata
@@ -529,3 +586,7 @@ class IntervalNormalizedChannelMetadata(
     you can instantiate an object as usual.
 
     """
+
+    def __init__(self):
+        super().__init__()
+        self._attributes.extend(["normalize_id"])
