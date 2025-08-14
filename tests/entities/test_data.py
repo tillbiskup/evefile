@@ -179,6 +179,43 @@ class TestData(unittest.TestCase):
         output = temp_stdout.getvalue().strip()
         self.assertEqual(f"{self.data.metadata.name} <Data>", output)
 
+    def test_show_info_prints_metadata(self):
+        self.data.metadata.name = "foo"
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("METADATA", output)
+        self.assertIn("name: ", output)
+
+    def test_show_info_prints_option_keys_if_they_exist(self):
+        self.data.options = {
+            "foo": np.ndarray([]),
+            "bar": np.ndarray([]),
+        }
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("OPTIONS", output)
+        self.assertIn("foo", output)
+        self.assertIn("bar", output)
+
+    def test_show_info_does_not_print_options_if_they_dont_exist(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertNotIn("OPTIONS", output)
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("FIELDS", output)
+        self.assertIn("data", output)
+
 
 class TestMonitorData(unittest.TestCase):
     def setUp(self):
@@ -213,6 +250,14 @@ class TestMonitorData(unittest.TestCase):
             f"{self.data.metadata.id}) <MonitorData>",
             output,
         )
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        for field in ["data", "milliseconds"]:
+            self.assertIn(field, output)
 
 
 class TestMeasureData(unittest.TestCase):
@@ -292,6 +337,14 @@ class TestMeasureData(unittest.TestCase):
             f"{self.data.metadata.id}) <MeasureData>",
             output,
         )
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        for field in ["data", "position_counts"]:
+            self.assertIn(field, output)
 
 
 class TestDeviceData(unittest.TestCase):
@@ -542,6 +595,14 @@ class TestAverageChannelData(unittest.TestCase):
     def test_mean_returns_data_values(self):
         self.data.data = np.asarray([1, 2, 3])
         np.testing.assert_array_equal(self.data.data, self.data.mean)
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        for field in ["data", "position_counts", "attempts", "mean"]:
+            self.assertIn(field, output)
 
 
 class TestIntervalChannelData(unittest.TestCase):

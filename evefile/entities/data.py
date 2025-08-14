@@ -307,6 +307,58 @@ class Data:
                 )
         self.metadata.copy_attributes_from(source.metadata)
 
+    def show_info(self):
+        """
+        Print basic information regarding the contents of a data object.
+
+        Often, it is convenient to get a brief overview of the contents of
+        a data object. The output of this method currently contains the
+        following sections:
+
+        * metadata
+        * options (if present)
+        * fields
+
+        The output could look similar to the following:
+
+        .. code-block:: none
+
+            METADATA
+            name: jane
+
+            OPTIONS
+            some_option: value
+
+            FIELDS
+            data
+
+        Here, the ``METADATA`` block simply outputs what you would get with
+
+        .. code-block::
+
+            print(data.metadata)
+
+        If options are present, then the keys of the :attr:`options` dict
+        are returned in the ``OPTIONS`` block. Finally, the ``FIELDS`` block
+        provides an overview of all the attributes containing some kind of
+        data. This will differ depending on the type of data you are looking
+        at.
+        """
+        print("METADATA")
+        print(self.metadata)
+        if self.options:
+            print("\nOPTIONS")
+            for key in self.options:
+                print(key)
+        print("\nFIELDS")
+        for item in dir(self):
+            if (
+                not item.startswith("_")
+                and not callable(getattr(self, item))
+                and item not in ["importer", "metadata", "options"]
+            ):
+                print(item)
+
 
 class MonitorData(Data):
     """
