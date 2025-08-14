@@ -743,10 +743,7 @@ class AverageChannelData(ChannelData):
     metadata : :class:`evefile.entities.metadata.AverageChannelMetadata`
         Relevant metadata for the individual device.
 
-    raw_data : Any
-        The raw individual values measured.
-
-    attempts : numpy.ndarray
+    attempts : :class:`numpy.ndarray`
         Short description
 
 
@@ -764,10 +761,7 @@ class AverageChannelData(ChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.AverageChannelMetadata()
-        self.raw_data = None
         self.attempts = np.ndarray(shape=[], dtype=int)
-        self._mean = None
-        self._std = None
 
     @property
     def mean(self):
@@ -779,41 +773,12 @@ class AverageChannelData(ChannelData):
         mean : :class:`numpy.ndarray`
             The mean of the values recorded.
 
-            If more values have been recorded than should be averaged
-            over, only the number of values to average over are taken from
-            the end of the individual :attr:`raw_data` row.
+            As at least up to eveH5 v7.x only the averaged values are stored
+            in the HDF5 file, this simply returns the values stored
+            in :attr:`data`.
 
         """
-        if self._mean is None:
-            if self.raw_data is not None:
-                self._mean = self.raw_data.mean(axis=1)
-            else:
-                self._mean = self.data
-        return self._mean
-
-    @property
-    def std(self):
-        """
-        Standard deviation values for channel data.
-
-        Returns
-        -------
-        mean : :class:`numpy.ndarray`
-            The standard deviation of the values recorded.
-
-            If more values have been recorded than should be averaged
-            over, only the number of values to average over are taken from
-            the end of the individual :attr:`raw_data` row to calculate
-            the standard deviation.
-
-        """
-        if self._std is None and self.raw_data is not None:
-            self._std = self.raw_data.std(axis=1)
-        return self._std
-
-    @std.setter
-    def std(self, std=None):
-        self._std = std
+        return self.data
 
 
 class IntervalChannelData(ChannelData):
@@ -838,10 +803,10 @@ class IntervalChannelData(ChannelData):
     metadata : :class:`evefile.entities.metadata.IntervalChannelMetadata`
         Relevant metadata for the individual device.
 
-    raw_data : Any
-        The raw individual values measured in the given time interval.
+    std : :class:`numpy.ndarray`
+        Standard deviation values for channel data.
 
-    counts : numpy.ndarray
+    counts : :class:`numpy.ndarray`
         The number of values measured in the given time interval.
 
         Note that this value may change for each individual position.
@@ -861,10 +826,8 @@ class IntervalChannelData(ChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.IntervalChannelMetadata()
-        self.raw_data = None
         self.counts = np.ndarray(shape=[], dtype=int)
-        self._mean = None
-        self._std = None
+        self.std = None
 
     @property
     def mean(self):
@@ -876,33 +839,12 @@ class IntervalChannelData(ChannelData):
         mean : :class:`numpy.ndarray`
             The mean of the values measured in the given time interval.
 
-        """
-        if self._mean is None:
-            if self.raw_data is not None:
-                self._mean = self.raw_data.mean(axis=1)
-            else:
-                self._mean = self.data
-        return self._mean
-
-    @property
-    def std(self):
-        """
-        Standard deviation values for channel data.
-
-        Returns
-        -------
-        mean : :class:`numpy.ndarray`
-            The standard deviation of the values measured in the given
-            time interval.
+            As at least up to eveH5 v7.x only the averaged values are stored
+            in the HDF5 file, this simply returns the values stored
+            in :attr:`data`.
 
         """
-        if self._std is None and self.raw_data is not None:
-            self._std = self.raw_data.std(axis=1)
-        return self._std
-
-    @std.setter
-    def std(self, std=None):
-        self._std = std
+        return self.data
 
 
 class NormalizedChannelData:
