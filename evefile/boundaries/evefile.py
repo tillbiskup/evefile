@@ -488,7 +488,7 @@ class EveFile(File):
         dataframe = pd.DataFrame(
             {item.metadata.name: item.data for item in joined_data}
         )
-        dataframe.index.name = "PosRef"
+        dataframe.index.name = "position"
         return dataframe
 
     def show_info(self):

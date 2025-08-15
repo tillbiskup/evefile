@@ -394,7 +394,7 @@ class TestEveFile(unittest.TestCase):
         h5file.create()
         self.evefile = evefile.EveFile(filename=self.filename)
         dataframe = self.evefile.get_dataframe()
-        self.assertEqual("PosRef", dataframe.index.name)
+        self.assertEqual("position", dataframe.index.name)
 
     def test_get_dataframe_uses_correct_mode(self):
         h5file = DummyHDF5File(filename=self.filename)
