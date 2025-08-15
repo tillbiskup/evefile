@@ -10,9 +10,6 @@ For version 0.1
 
 * API somewhat similar to the legacy evefile package, but without C++ objects shining through
 * Support of monitors (including converting timestamps to position counts)
-* Include all data vectors for average and interval channel in DataFrame
-
-  * Scalar metadata will *not* be included in DataFrame (difference to previous interfaces)
 
 
 For version 0.2

@@ -15,6 +15,22 @@ Not yet released
 * ...
 
 
+Version 0.1.0-rc.2
+==================
+
+Not yet released
+
+New features
+------------
+
+* :meth:`evefile.entities.data.Data.get_dataframe` to get a Pandas DataFrame for an individual data object.
+* :meth:`evefile.entities.data.MeasureData.join` for harmonising data (including all data attributes) to a given list of positions.
+
+  * Hopefully, join modes are implemented correctly this time. ;-)
+
+* All additional data attributes of, *e.g.* :class:`evefile.entities.data.AverageChannelData`, will trigger data import on first access.
+
+
 Version 0.1.0-rc.1
 ==================
 

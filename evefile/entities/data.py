@@ -1036,9 +1036,6 @@ class AverageChannelData(ChannelData):
     metadata : :class:`evefile.entities.metadata.AverageChannelMetadata`
         Relevant metadata for the individual device.
 
-    attempts : :class:`numpy.ndarray`
-        Short description
-
 
     Examples
     --------
@@ -1054,8 +1051,27 @@ class AverageChannelData(ChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.AverageChannelMetadata()
-        self.attempts = np.ndarray(shape=[], dtype=int)
+        self._attempts = None
         self._data_attributes = ["data", "attempts"]
+
+    @property
+    def attempts(self):
+        """
+        Number of attempts needed until final data were recorded.
+
+        Returns
+        -------
+        attempts : :class:`numpy.ndarray`
+            Number of attempts
+
+        """
+        if self._attempts is None:
+            self.get_data()
+        return self._attempts
+
+    @attempts.setter
+    def attempts(self, attempts=None):
+        self._attempts = attempts
 
     @property
     def mean(self):
@@ -1097,14 +1113,6 @@ class IntervalChannelData(ChannelData):
     metadata : :class:`evefile.entities.metadata.IntervalChannelMetadata`
         Relevant metadata for the individual device.
 
-    std : :class:`numpy.ndarray`
-        Standard deviation values for channel data.
-
-    counts : :class:`numpy.ndarray`
-        The number of values measured in the given time interval.
-
-        Note that this value may change for each individual position.
-
 
     Examples
     --------
@@ -1120,9 +1128,47 @@ class IntervalChannelData(ChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.IntervalChannelMetadata()
-        self.counts = np.ndarray(shape=[], dtype=int)
-        self.std = None
+        self._counts = None
+        self._std = None
         self._data_attributes = ["data", "counts", "std"]
+
+    @property
+    def counts(self):
+        """
+        The number of values measured in the given time interval.
+
+        Returns
+        -------
+        counts : :class:`numpy.ndarray`
+            Number of values measured in the given time interval
+
+        """
+        if self._counts is None:
+            self.get_data()
+        return self._counts
+
+    @counts.setter
+    def counts(self, counts=None):
+        self._counts = counts
+
+    @property
+    def std(self):
+        """
+        Standard deviation values for channel data.
+
+        Returns
+        -------
+        std : :class:`numpy.ndarray`
+            Standard deviation values for channel data.
+
+        """
+        if self._std is None:
+            self.get_data()
+        return self._std
+
+    @std.setter
+    def std(self, std=None):
+        self._std = std
 
     @property
     def mean(self):
@@ -1155,14 +1201,6 @@ class NormalizedChannelData:
     metadata : :class:`evefile.entities.metadata.AreaChannelMetadata`
         Relevant metadata for normalization.
 
-    normalized_data : Any
-        Data that have been normalized.
-
-        Normalization takes place by dividing by the values of the
-        normalizing channel.
-
-    normalizing_data : Any
-        Data used for normalization.
 
     Raises
     ------
@@ -1184,8 +1222,45 @@ class NormalizedChannelData:
     def __init__(self):
         super().__init__()
         self.metadata = metadata.NormalizedChannelMetadata()
-        self.normalized_data = None
-        self.normalizing_data = None
+        self._normalized_data = None
+        self._normalizing_data = None
+
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
 
 
 class SinglePointNormalizedChannelData(
@@ -1233,6 +1308,47 @@ class SinglePointNormalizedChannelData(
             "normalizing_data",
         ]
 
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        if self._normalized_data is None:
+            self.get_data()
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        if self._normalizing_data is None:
+            self.get_data()
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
+
 
 class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     """
@@ -1277,6 +1393,47 @@ class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
             "normalized_data",
             "normalizing_data",
         ]
+
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        if self._normalized_data is None:
+            self.get_data()
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        if self._normalizing_data is None:
+            self.get_data()
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
 
 
 class IntervalNormalizedChannelData(
@@ -1324,6 +1481,47 @@ class IntervalNormalizedChannelData(
             "normalized_data",
             "normalizing_data",
         ]
+
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        if self._normalized_data is None:
+            self.get_data()
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        if self._normalizing_data is None:
+            self.get_data()
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
 
 
 class DataImporter:

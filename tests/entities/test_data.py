@@ -778,6 +778,18 @@ class TestAverageChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.AverageChannelData()
 
+        class MockData(data.AverageChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
+
     def test_instantiate_class(self):
         pass
 
@@ -837,6 +849,7 @@ class TestAverageChannelData(unittest.TestCase):
 
     def test_join_with_positions_superset_masks_all_attributes(self):
         self.data.data = np.random.random(3)
+        self.data.attempts = np.asarray([3, 4, 3], dtype=np.int64)
         self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
         positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
         data_ = copy.copy(self.data)
@@ -854,10 +867,26 @@ class TestAverageChannelData(unittest.TestCase):
         )
         np.testing.assert_array_equal(positions, data_.position_counts)
 
+    def test_accessing_attempts_calls_get_data_if_data_not_loaded(self):
+        _ = self.mock_data.attempts
+        self.assertTrue(self.mock_data.get_data_called)
+
 
 class TestIntervalChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.IntervalChannelData()
+
+        class MockData(data.IntervalChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
 
     def test_instantiate_class(self):
         pass
@@ -931,6 +960,14 @@ class TestIntervalChannelData(unittest.TestCase):
         )
         np.testing.assert_array_equal(positions, data_.position_counts)
 
+    def test_accessing_counts_calls_get_data_if_data_not_loaded(self):
+        _ = self.mock_data.counts
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_std_calls_get_data_if_data_not_loaded(self):
+        _ = self.mock_data.std
+        self.assertTrue(self.mock_data.get_data_called)
+
 
 class TestNormalizedChannelData(unittest.TestCase):
     def setUp(self):
@@ -957,6 +994,18 @@ class TestNormalizedChannelData(unittest.TestCase):
 class TestSinglePointNormalizedChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.SinglePointNormalizedChannelData()
+
+        class MockData(data.SinglePointNormalizedChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
 
     def test_instantiate_class(self):
         pass
@@ -1026,10 +1075,34 @@ class TestSinglePointNormalizedChannelData(unittest.TestCase):
         )
         np.testing.assert_array_equal(positions, data_.position_counts)
 
+    def test_accessing_normalized_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalized_data
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_normalizing_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalizing_data
+        self.assertTrue(self.mock_data.get_data_called)
+
 
 class TestAverageNormalizedChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.AverageNormalizedChannelData()
+
+        class MockData(data.AverageNormalizedChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
 
     def test_instantiate_class(self):
         pass
@@ -1102,10 +1175,34 @@ class TestAverageNormalizedChannelData(unittest.TestCase):
         )
         np.testing.assert_array_equal(positions, data_.position_counts)
 
+    def test_accessing_normalized_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalized_data
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_normalizing_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalizing_data
+        self.assertTrue(self.mock_data.get_data_called)
+
 
 class TestIntervalNormalizedChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.IntervalNormalizedChannelData()
+
+        class MockData(data.IntervalNormalizedChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
 
     def test_instantiate_class(self):
         pass
@@ -1179,6 +1276,18 @@ class TestIntervalNormalizedChannelData(unittest.TestCase):
             self.data.position_counts, data_.position_counts[1:4]
         )
         np.testing.assert_array_equal(positions, data_.position_counts)
+
+    def test_accessing_normalized_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalized_data
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_normalizing_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalizing_data
+        self.assertTrue(self.mock_data.get_data_called)
 
 
 class TestDataImporter(unittest.TestCase):
