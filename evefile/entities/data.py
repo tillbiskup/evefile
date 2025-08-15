@@ -10,15 +10,15 @@
 
 Data are organised in "datasets" within HDF5, and the
 :mod:`evefile.entities.data` module provides the relevant entities
-to describe these datasets. Although currently (as of 07/2024, eve version
-2.1) neither average nor interval detector channels save the individual
-data points, at least the former is a clear need of the
-engineers/scientists. Hence, the data model already respects this use
-case. As per position (count) there can be a variable number of measured
-points, the resulting array is no longer rectangular, but a "ragged
-array". While storing such arrays is possible directly in HDF5,
-the implementation within evefile is entirely independent of the actual
-representation in the eveH5 file.
+to describe these datasets.
+
+Please note that in contrast to the `evedata
+<https://evedata.docs.radiometry.de/>`_ package, the ``evefile`` package has
+a somewhat reduced data model, *e.g.* not considering individual data points
+for average and interval channels (that are currently not available from the
+underlying data files, anyway). Whether the corresponding module in the
+``evedata`` package will become a true superset of this module remains to be
+seen.
 
 
 Overview
@@ -128,6 +128,7 @@ import logging
 import h5py
 import numpy as np
 import pandas as pd
+from numpy import ma
 
 from evefile.entities import metadata
 
@@ -194,6 +195,8 @@ class Data:
         self.options = {}
         self.importer = []
         self._data = None
+        # List of attributes containing data
+        self._data_attributes = ["data"]
 
     def __str__(self):
         """
@@ -382,7 +385,10 @@ class Data:
             index = np.linspace(1, self.data.size, self.data.size)
         else:
             index = [0]
-        dataframe = pd.DataFrame({"data": self.data}, index=index)
+        dataframe = pd.DataFrame(
+            {item: getattr(self, item) for item in self._data_attributes},
+            index=index,
+        )
         return dataframe
 
 
@@ -390,9 +396,17 @@ class MonitorData(Data):
     """
     Data from devices monitored, but not controlled by the eve engine.
 
+    Monitors are a concept stemming from the underlying `EPICS layer
+    <https://epics-controls.org/>`_ and are closely related to telemetry in
+    general. In short: You register a certain "device", record an initial
+    value, and from then on only changes to this value (together with a
+    timestamp). This allows you to record any relevant changes in your setup
+    with minimal overhead and data storage.
+
     In contrast to :class:`MeasureData`, :class:`MonitorData` do not have
     a position as primary axis, but a timestamp in milliseconds, *i.e.*,
-    the :attr:`milliseconds` attribute.
+    the :attr:`milliseconds` attribute. This means that without further ado,
+    you cannot plot monitor data against other data.
 
 
     Attributes
@@ -571,6 +585,72 @@ class MeasureData(Data):
         dataframe.index.name = "position"
         return dataframe
 
+    def join(self, positions=None):
+        """
+        Perform a left join of the data on the provided list of positions.
+
+        The main "quantisation" axis of the values for a device and the
+        common reference is the list of positions. To sensibly compare the
+        data of different devices or plot different device data against each
+        other, the data need to be harmonised, *i.e.* share a common set of
+        positions as indices.
+
+        If positions are not present in the original data, by default,
+        the corresponding entries will be masked and the :attr:`data`
+        attribute converted into a :class:`numpy.ma.MaskedArray`.
+
+        The reason for not using "NaN" (not a number) is, in short,
+        that "NaN" is only defined for floating point numbers, but neither
+        integers nor non-numeric values. Data, however, could generally
+        contain values that are *not* floating point numbers. For a more
+        detailed discussion, see the :mod:`evefile.controllers.joining`
+        module.
+
+        .. note::
+
+            The method will *alter* the data and positions of the underlying
+            :obj:`MeasureData` object. Hence, make sure to make a copy if
+            this is not your intended use case.
+
+
+        Parameters
+        ----------
+        positions : :class:`numpy.ndarray`
+            Array with positions the data should be mapped to.
+
+        Raises
+        ------
+        ValueError
+            Raised if no positions are provided
+
+        """
+        if positions is None:
+            raise ValueError("No positions provided")
+        for item in self._data_attributes:
+            data_ = getattr(self, item)
+            if len(positions) < len(self.position_counts):
+                # pylint: disable=unsubscriptable-object
+                data_ = data_[
+                    np.searchsorted(self.position_counts, positions).astype(
+                        np.int64
+                    )
+                ]
+            elif len(positions) > len(self.position_counts):
+                original_values = data_
+                data_ = ma.masked_array(np.zeros(len(positions)))
+                data_ = ma.masked_array(data_)
+                new_positions = np.setdiff1d(positions, self.position_counts)
+                data_[
+                    np.searchsorted(positions, self.position_counts).astype(
+                        np.int64
+                    )
+                ] = original_values
+                data_[
+                    np.searchsorted(positions, new_positions).astype(np.int64)
+                ] = ma.masked
+            setattr(self, item, data_)
+        self.position_counts = positions
+
     def _import_from_hdf5dataimporter(self, importer=None):
         """
         Import data from HDF5 using data importer.
@@ -686,6 +766,87 @@ class AxisData(MeasureData):
         )
         for attribute in importer.mapping.values():
             setattr(self, attribute, getattr(self, attribute)[indices])
+
+    def join(self, positions=None, fill=False, snapshot=None):
+        """
+        Perform a left join of the data on the provided list of positions.
+
+        The main "quantisation" axis of the values for a device and the
+        common reference is the list of positions. To sensibly compare the
+        data of different devices or plot different device data against each
+        other, the data need to be harmonised, *i.e.* share a common set of
+        positions as indices.
+
+        If positions are not present in the original data, by default,
+        the corresponding entries will be masked and the :attr:`data`
+        attribute converted into a :class:`numpy.ma.MaskedArray`.
+
+        The reason for not using "NaN" (not a number) is, in short,
+        that "NaN" is only defined for floating point numbers, but neither
+        integers nor non-numeric values. Data, however, could generally
+        contain values that are *not* floating point numbers. For a more
+        detailed discussion, see the :mod:`evefile.controllers.joining`
+        module.
+
+        .. note::
+
+            The method will *alter* the data and positions of the underlying
+            :obj:`MeasureData` object. Hence, make sure to make a copy if
+            this is not your intended use case.
+
+
+        Parameters
+        ----------
+        positions : :class:`numpy.ndarray`
+            Array with positions the data should be mapped to.
+
+        fill : :class:`bool`
+            Whether to fill missing positions with previous values.
+
+            Only in case a previous value exists for a given position (or a
+            snapshot containing a previous value is provided as additional
+            parameter), filling for the position will be performed.
+            Otherwise, the position is masked.
+
+        snapshot : :class:`AxisData`
+            Snapshot data corresponding to the original :obj:`AxisData` object.
+
+        Raises
+        ------
+        ValueError
+            Raised if no positions are provided
+
+        """
+        if snapshot is not None:
+            fill = True
+        if not fill:
+            super().join(positions=positions)
+        else:
+            if snapshot:
+                snapshot.get_data()
+                insert_positions = np.searchsorted(
+                    self.position_counts,
+                    snapshot.position_counts,
+                )
+                self.data = np.insert(
+                    self.data,
+                    insert_positions,
+                    snapshot.data,
+                )
+                self.position_counts = np.insert(
+                    self.position_counts,
+                    insert_positions,
+                    snapshot.position_counts,
+                )
+            new_positions = (
+                np.searchsorted(self.position_counts, positions, side="right")
+                - 1
+            )
+            self.position_counts = positions
+            self.data = self.data[new_positions]
+            if np.where(new_positions < 0)[0].size:
+                self.data = ma.masked_array(self.data)
+                self.data[np.where(new_positions < 0)] = ma.masked
 
 
 class ChannelData(MeasureData):
@@ -894,6 +1055,7 @@ class AverageChannelData(ChannelData):
         super().__init__()
         self.metadata = metadata.AverageChannelMetadata()
         self.attempts = np.ndarray(shape=[], dtype=int)
+        self._data_attributes = ["data", "attempts"]
 
     @property
     def mean(self):
@@ -911,43 +1073,6 @@ class AverageChannelData(ChannelData):
 
         """
         return self.data
-
-    def get_dataframe(self):
-        """
-        Retrieve Pandas DataFrame with all data as columns.
-
-        The DataFrame contains all columns with actual data, in this case
-        the :attr:`data` and :attr:`attempts` attributes of the object.
-
-        Column names are as follows:
-
-        ============ ========================
-        column name  attribute
-        ============ ========================
-        data         :attr:`data`
-        attempts     :attr:`attempts`
-        ============ ========================
-
-        The index is named "positions" and contains the values of the
-        :attr:`position_counts` attribute of the data object.
-
-        .. important::
-
-            While working with a Pandas DataFrame may seem convenient,
-            you're loosing basically all the relevant metadata of the
-            datasets. Hence, this method is rather a convenience method to
-            be backwards-compatible to older interfaces, but it is
-            explicitly *not* suggested for extensive use.
-
-        Returns
-        -------
-        dataframe : :class:`pandas.DataFrame`
-            Pandas DataFrame containing all data as columns.
-
-        """
-        dataframe = super().get_dataframe()
-        dataframe["attempts"] = self.attempts
-        return dataframe
 
 
 class IntervalChannelData(ChannelData):
@@ -997,6 +1122,7 @@ class IntervalChannelData(ChannelData):
         self.metadata = metadata.IntervalChannelMetadata()
         self.counts = np.ndarray(shape=[], dtype=int)
         self.std = None
+        self._data_attributes = ["data", "counts", "std"]
 
     @property
     def mean(self):
@@ -1014,46 +1140,6 @@ class IntervalChannelData(ChannelData):
 
         """
         return self.data
-
-    def get_dataframe(self):
-        """
-        Retrieve Pandas DataFrame with all data as columns.
-
-        The DataFrame contains all columns with actual data, in this case
-        the :attr:`data`, :attr:`counts`, and :attr:`std`, attributes of the
-        object.
-
-        Column names are as follows:
-
-        ============ ========================
-        column name  attribute
-        ============ ========================
-        data         :attr:`data`
-        counts       :attr:`counts`
-        std          :attr:`std`
-        ============ ========================
-
-        The index is named "positions" and contains the values of the
-        :attr:`position_counts` attribute of the data object.
-
-        .. important::
-
-            While working with a Pandas DataFrame may seem convenient,
-            you're loosing basically all the relevant metadata of the
-            datasets. Hence, this method is rather a convenience method to
-            be backwards-compatible to older interfaces, but it is
-            explicitly *not* suggested for extensive use.
-
-        Returns
-        -------
-        dataframe : :class:`pandas.DataFrame`
-            Pandas DataFrame containing all data as columns.
-
-        """
-        dataframe = super().get_dataframe()
-        dataframe["counts"] = self.counts
-        dataframe["std"] = self.std
-        return dataframe
 
 
 class NormalizedChannelData:
@@ -1141,46 +1227,11 @@ class SinglePointNormalizedChannelData(
     def __init__(self):
         super().__init__()
         self.metadata = metadata.SinglePointNormalizedChannelMetadata()
-
-    def get_dataframe(self):
-        """
-        Retrieve Pandas DataFrame with all data as columns.
-
-        The DataFrame contains all columns with actual data, in this case
-        the :attr:`data`, attr:`normalized_data` and :attr:`normalizing_data`
-        attributes of the object.
-
-        Column names are as follows:
-
-        ============ ========================
-        column name  attribute
-        ============ ========================
-        data         :attr:`data`
-        normalized   :attr:`normalized_data`
-        normalizing  :attr:`normalizing_data`
-        ============ ========================
-
-        The index is named "positions" and contains the values of the
-        :attr:`position_counts` attribute of the data object.
-
-        .. important::
-
-            While working with a Pandas DataFrame may seem convenient,
-            you're loosing basically all the relevant metadata of the
-            datasets. Hence, this method is rather a convenience method to
-            be backwards-compatible to older interfaces, but it is
-            explicitly *not* suggested for extensive use.
-
-        Returns
-        -------
-        dataframe : :class:`pandas.DataFrame`
-            Pandas DataFrame containing all data as columns.
-
-        """
-        dataframe = super().get_dataframe()
-        dataframe["normalized"] = self.normalized_data
-        dataframe["normalizing"] = self.normalizing_data
-        return dataframe
+        self._data_attributes = [
+            "data",
+            "normalized_data",
+            "normalizing_data",
+        ]
 
 
 class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
@@ -1220,47 +1271,12 @@ class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.AverageNormalizedChannelMetadata()
-
-    def get_dataframe(self):
-        """
-        Retrieve Pandas DataFrame with all data as columns.
-
-        The DataFrame contains all columns with actual data, in this case
-        the :attr:`data`, :attr:`attempts`, :attr:`normalized_data`,
-        and :attr:`normalizing_data` attributes of the object.
-
-        Column names are as follows:
-
-        ============ ========================
-        column name  attribute
-        ============ ========================
-        data         :attr:`data`
-        attempts     :attr:`attempts`
-        normalized   :attr:`normalized_data`
-        normalizing  :attr:`normalizing_data`
-        ============ ========================
-
-        The index is named "positions" and contains the values of the
-        :attr:`position_counts` attribute of the data object.
-
-        .. important::
-
-            While working with a Pandas DataFrame may seem convenient,
-            you're loosing basically all the relevant metadata of the
-            datasets. Hence, this method is rather a convenience method to
-            be backwards-compatible to older interfaces, but it is
-            explicitly *not* suggested for extensive use.
-
-        Returns
-        -------
-        dataframe : :class:`pandas.DataFrame`
-            Pandas DataFrame containing all data as columns.
-
-        """
-        dataframe = super().get_dataframe()
-        dataframe["normalized"] = self.normalized_data
-        dataframe["normalizing"] = self.normalizing_data
-        return dataframe
+        self._data_attributes = [
+            "data",
+            "attempts",
+            "normalized_data",
+            "normalizing_data",
+        ]
 
 
 class IntervalNormalizedChannelData(
@@ -1301,48 +1317,13 @@ class IntervalNormalizedChannelData(
     def __init__(self):
         super().__init__()
         self.metadata = metadata.IntervalNormalizedChannelMetadata()
-
-    def get_dataframe(self):
-        """
-        Retrieve Pandas DataFrame with all data as columns.
-
-        The DataFrame contains all columns with actual data, in this case
-        the :attr:`data`, :attr:`counts`, :attr:`std`, :attr:`normalized_data`,
-        and :attr:`normalizing_data` attributes of the object.
-
-        Column names are as follows:
-
-        ============ ========================
-        column name  attribute
-        ============ ========================
-        data         :attr:`data`
-        counts       :attr:`counts`
-        std          :attr:`std`
-        normalized   :attr:`normalized_data`
-        normalizing  :attr:`normalizing_data`
-        ============ ========================
-
-        The index is named "positions" and contains the values of the
-        :attr:`position_counts` attribute of the data object.
-
-        .. important::
-
-            While working with a Pandas DataFrame may seem convenient,
-            you're loosing basically all the relevant metadata of the
-            datasets. Hence, this method is rather a convenience method to
-            be backwards-compatible to older interfaces, but it is
-            explicitly *not* suggested for extensive use.
-
-        Returns
-        -------
-        dataframe : :class:`pandas.DataFrame`
-            Pandas DataFrame containing all data as columns.
-
-        """
-        dataframe = super().get_dataframe()
-        dataframe["normalized"] = self.normalized_data
-        dataframe["normalizing"] = self.normalizing_data
-        return dataframe
+        self._data_attributes = [
+            "data",
+            "counts",
+            "std",
+            "normalized_data",
+            "normalizing_data",
+        ]
 
 
 class DataImporter:
