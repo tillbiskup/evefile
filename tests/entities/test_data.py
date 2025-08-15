@@ -6,6 +6,7 @@ from io import StringIO
 
 import h5py
 import numpy as np
+import pandas as pd
 
 from evefile.entities import data, metadata
 
@@ -216,6 +217,31 @@ class TestData(unittest.TestCase):
         self.assertIn("FIELDS", output)
         self.assertIn("data", output)
 
+    def test_get_dataframe_returns_dataframe(self):
+        dataframe = self.data.get_dataframe()
+        self.assertIsInstance(dataframe, pd.DataFrame)
+
+    def test_dataframe_contains_data_column(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data"],
+        )
+
+    def test_get_dataframe_loads_data(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        importer = data.HDF5DataImporter(source=self.filename)
+        importer.item = "/c1/meta/PosCountTimer"
+        importer.mapping = {
+            "PosCounter": "position_counts",
+            "PosCountTimer": "data",
+        }
+        self.data.importer.append(importer)
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.size)
+
 
 class TestMonitorData(unittest.TestCase):
     def setUp(self):
@@ -258,6 +284,16 @@ class TestMonitorData(unittest.TestCase):
         output = temp_stdout.getvalue().strip()
         for field in ["data", "milliseconds"]:
             self.assertIn(field, output)
+
+    def test_dataframe_has_correct_index_name(self):
+        dataframe = self.data.get_dataframe()
+        self.assertEqual("milliseconds", dataframe.index.name)
+
+    def test_dataframe_has_correct_index_values(self):
+        self.data.data = np.random.random(3)
+        self.data.milliseconds = np.asarray([3, 12, 28])
+        dataframe = self.data.get_dataframe()
+        np.testing.assert_array_equal(self.data.milliseconds, dataframe.index)
 
 
 class TestMeasureData(unittest.TestCase):
@@ -345,6 +381,18 @@ class TestMeasureData(unittest.TestCase):
         output = temp_stdout.getvalue().strip()
         for field in ["data", "position_counts"]:
             self.assertIn(field, output)
+
+    def test_dataframe_has_correct_index_name(self):
+        dataframe = self.data.get_dataframe()
+        self.assertEqual("position", dataframe.index.name)
+
+    def test_dataframe_has_correct_index_values(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 12, 28])
+        dataframe = self.data.get_dataframe()
+        np.testing.assert_array_equal(
+            self.data.position_counts, dataframe.index
+        )
 
 
 class TestDeviceData(unittest.TestCase):
@@ -604,6 +652,14 @@ class TestAverageChannelData(unittest.TestCase):
         for field in ["data", "position_counts", "attempts", "mean"]:
             self.assertIn(field, output)
 
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "attempts"],
+        )
+
 
 class TestIntervalChannelData(unittest.TestCase):
     def setUp(self):
@@ -619,6 +675,7 @@ class TestIntervalChannelData(unittest.TestCase):
             "data",
             "position_counts",
             "counts",
+            "std",
         ]
         for attribute in attributes:
             with self.subTest(attribute=attribute):
@@ -632,6 +689,14 @@ class TestIntervalChannelData(unittest.TestCase):
     def test_mean_returns_data_values(self):
         self.data.data = np.asarray([1, 2, 3])
         np.testing.assert_array_equal(self.data.data, self.data.mean)
+
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "counts", "std"],
+        )
 
 
 class TestNormalizedChannelData(unittest.TestCase):
@@ -681,6 +746,14 @@ class TestSinglePointNormalizedChannelData(unittest.TestCase):
             self.data.metadata, metadata.SinglePointNormalizedChannelMetadata
         )
 
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "normalized", "normalizing"],
+        )
+
 
 class TestAverageNormalizedChannelData(unittest.TestCase):
     def setUp(self):
@@ -708,6 +781,14 @@ class TestAverageNormalizedChannelData(unittest.TestCase):
             self.data.metadata, metadata.AverageNormalizedChannelMetadata
         )
 
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "attempts", "normalized", "normalizing"],
+        )
+
 
 class TestIntervalNormalizedChannelData(unittest.TestCase):
     def setUp(self):
@@ -733,6 +814,14 @@ class TestIntervalNormalizedChannelData(unittest.TestCase):
     def test_metadata_are_of_corresponding_type(self):
         self.assertIsInstance(
             self.data.metadata, metadata.IntervalNormalizedChannelMetadata
+        )
+
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "counts", "std", "normalized", "normalizing"],
         )
 
 
