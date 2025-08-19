@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import logging
 import os
 import unittest
@@ -6,6 +7,7 @@ from io import StringIO
 
 import h5py
 import numpy as np
+import pandas as pd
 
 from evefile.entities import data, metadata
 
@@ -179,6 +181,68 @@ class TestData(unittest.TestCase):
         output = temp_stdout.getvalue().strip()
         self.assertEqual(f"{self.data.metadata.name} <Data>", output)
 
+    def test_show_info_prints_metadata(self):
+        self.data.metadata.name = "foo"
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("METADATA", output)
+        self.assertIn("name: ", output)
+
+    def test_show_info_prints_option_keys_if_they_exist(self):
+        self.data.options = {
+            "foo": np.ndarray([]),
+            "bar": np.ndarray([]),
+        }
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("OPTIONS", output)
+        self.assertIn("foo", output)
+        self.assertIn("bar", output)
+
+    def test_show_info_does_not_print_options_if_they_dont_exist(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertNotIn("OPTIONS", output)
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("FIELDS", output)
+        self.assertIn("data", output)
+
+    def test_get_dataframe_returns_dataframe(self):
+        dataframe = self.data.get_dataframe()
+        self.assertIsInstance(dataframe, pd.DataFrame)
+
+    def test_dataframe_contains_data_column(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data"],
+        )
+
+    def test_get_dataframe_loads_data(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        importer = data.HDF5DataImporter(source=self.filename)
+        importer.item = "/c1/meta/PosCountTimer"
+        importer.mapping = {
+            "PosCounter": "position_counts",
+            "PosCountTimer": "data",
+        }
+        self.data.importer.append(importer)
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.size)
+
 
 class TestMonitorData(unittest.TestCase):
     def setUp(self):
@@ -213,6 +277,24 @@ class TestMonitorData(unittest.TestCase):
             f"{self.data.metadata.id}) <MonitorData>",
             output,
         )
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        for field in ["data", "milliseconds"]:
+            self.assertIn(field, output)
+
+    def test_dataframe_has_correct_index_name(self):
+        dataframe = self.data.get_dataframe()
+        self.assertEqual("milliseconds", dataframe.index.name)
+
+    def test_dataframe_has_correct_index_values(self):
+        self.data.data = np.random.random(3)
+        self.data.milliseconds = np.asarray([3, 12, 28])
+        dataframe = self.data.get_dataframe()
+        np.testing.assert_array_equal(self.data.milliseconds, dataframe.index)
 
 
 class TestMeasureData(unittest.TestCase):
@@ -292,6 +374,68 @@ class TestMeasureData(unittest.TestCase):
             f"{self.data.metadata.id}) <MeasureData>",
             output,
         )
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        for field in ["data", "position_counts"]:
+            self.assertIn(field, output)
+
+    def test_dataframe_has_correct_index_name(self):
+        dataframe = self.data.get_dataframe()
+        self.assertEqual("position", dataframe.index.name)
+
+    def test_dataframe_has_correct_index_values(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 12, 28])
+        dataframe = self.data.get_dataframe()
+        np.testing.assert_array_equal(
+            self.data.position_counts, dataframe.index
+        )
+
+    def test_join_without_positions_raises(self):
+        with self.assertRaisesRegex(ValueError, "No positions provided"):
+            self.data.join()
+
+    def test_join_with_identical_positions(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data, data_.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts
+        )
+
+    def test_join_with_positions_subset_reduces(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data[[0, 2]], data_.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts[[0, 2]], data_.position_counts
+        )
+
+    def test_join_with_positions_superset_masks(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data, data_.data[1:4])
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        np.testing.assert_array_equal(positions, data_.position_counts)
+        self.assertIsInstance(data_.data, np.ma.MaskedArray)
 
 
 class TestDeviceData(unittest.TestCase):
@@ -383,6 +527,121 @@ class TestAxisData(unittest.TestCase):
         self.data.importer.append(importer)
         self.data.get_data()
         self.assertEqual(h5file.shape, len(self.data.data))
+
+    def test_join_with_positions_subset_reduces(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data[[0, 2]], data_.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts[[0, 2]], data_.position_counts
+        )
+
+    def test_join_with_positions_superset_masks(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data, data_.data[1:4])
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        np.testing.assert_array_equal(positions, data_.position_counts)
+        self.assertIsInstance(data_.data, np.ma.MaskedArray)
+
+    def test_join_with_positions_left_superset_and_fill_fills(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions, fill=True)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data, data_.data[1:4])
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        self.assertEqual(self.data.data[-1], data_.data[-1])
+        np.testing.assert_array_equal(positions, data_.position_counts)
+        self.assertIsInstance(data_.data, np.ma.MaskedArray)
+
+    def test_join_with_positions_right_superset_and_fill_fills(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions, fill=True)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data, data_.data[0:3])
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[0:3]
+        )
+        self.assertEqual(self.data.data[-1], data_.data[-1])
+        np.testing.assert_array_equal(positions, data_.position_counts)
+        self.assertNotIsInstance(data_.data, np.ma.MaskedArray)
+
+    def test_join_with_positions_superset_and_snapshot_fills(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        snapshot = data.AxisData()
+        snapshot.position_counts = np.asarray([2], dtype=np.int64)
+        snapshot.data = np.random.random(1)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions, snapshot=snapshot)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(data_.data[1:4], self.data.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        self.assertEqual(snapshot.data, data_.data[0])
+        self.assertEqual(self.data.data[-1], data_.data[-1])
+        np.testing.assert_array_equal(positions, data_.position_counts)
+        self.assertNotIsInstance(data_.data, np.ma.MaskedArray)
+
+    def test_join_with_positions_superset_and_snapshots_fills(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
+        snapshot = data.AxisData()
+        snapshot.position_counts = np.asarray([2, 8], dtype=np.int64)
+        snapshot.data = np.random.random(2)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions, snapshot=snapshot)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(data_.data[1:4], self.data.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        self.assertEqual(snapshot.data[0], data_.data[0])
+        self.assertEqual(snapshot.data[1], data_.data[6])
+        self.assertEqual(self.data.data[2], data_.data[5])
+        np.testing.assert_array_equal(positions, data_.position_counts)
+        self.assertNotIsInstance(data_.data, np.ma.MaskedArray)
+
+    def test_join_with_positions_superset_and_late_snapshot(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
+        snapshot = data.AxisData()
+        snapshot.position_counts = np.asarray([2, 8], dtype=np.int64)
+        snapshot.data = np.random.random(2)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions, snapshot=snapshot)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(data_.data[2:5], self.data.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[2:5]
+        )
+        self.assertEqual(snapshot.data[0], data_.data[1])
+        self.assertEqual(snapshot.data[1], data_.data[7])
+        self.assertEqual(self.data.data[2], data_.data[6])
+        np.testing.assert_array_equal(positions, data_.position_counts)
+        self.assertIsInstance(data_.data, np.ma.MaskedArray)
 
 
 class TestChannelData(unittest.TestCase):
@@ -519,6 +778,18 @@ class TestAverageChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.AverageChannelData()
 
+        class MockData(data.AverageChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
+
     def test_instantiate_class(self):
         pass
 
@@ -528,7 +799,6 @@ class TestAverageChannelData(unittest.TestCase):
             "options",
             "data",
             "position_counts",
-            "raw_data",
             "attempts",
         ]
         for attribute in attributes:
@@ -540,27 +810,83 @@ class TestAverageChannelData(unittest.TestCase):
             self.data.metadata, metadata.AverageChannelMetadata
         )
 
-    def test_mean_returns_mean_values(self):
-        self.data.raw_data = np.asarray([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
-        np.testing.assert_array_equal(
-            self.data.raw_data.mean(axis=1), self.data.mean
+    def test_mean_returns_data_values(self):
+        self.data.data = np.asarray([1, 2, 3])
+        np.testing.assert_array_equal(self.data.data, self.data.mean)
+
+    def test_show_info_prints_fields(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            self.data.show_info()
+        output = temp_stdout.getvalue().strip()
+        for field in ["data", "position_counts", "attempts", "mean"]:
+            self.assertIn(field, output)
+
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "attempts"],
         )
 
-    def test_std_returns_std_values(self):
-        self.data.raw_data = np.asarray([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
+    def test_join_with_positions_subset_reduces_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.attempts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(data_, attribute),
+                getattr(self.data, attribute)[[0, 2]],
+            )
         np.testing.assert_array_equal(
-            self.data.raw_data.std(axis=1), self.data.std
+            self.data.position_counts[[0, 2]], data_.position_counts
         )
 
-    def test_set_std_values(self):
-        self.data.std = np.asarray([[1, 2, 3], [1, 2, 3], [1, 2, 3]]).std(
-            axis=1
+    def test_join_with_positions_superset_masks_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.attempts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(self.data, attribute), getattr(data_, attribute)[1:4]
+            )
+            self.assertIsInstance(
+                getattr(data_, attribute), np.ma.MaskedArray
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
         )
+        np.testing.assert_array_equal(positions, data_.position_counts)
+
+    def test_accessing_attempts_calls_get_data_if_data_not_loaded(self):
+        _ = self.mock_data.attempts
+        self.assertTrue(self.mock_data.get_data_called)
 
 
 class TestIntervalChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.IntervalChannelData()
+
+        class MockData(data.IntervalChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
 
     def test_instantiate_class(self):
         pass
@@ -571,8 +897,8 @@ class TestIntervalChannelData(unittest.TestCase):
             "options",
             "data",
             "position_counts",
-            "raw_data",
             "counts",
+            "std",
         ]
         for attribute in attributes:
             with self.subTest(attribute=attribute):
@@ -583,22 +909,64 @@ class TestIntervalChannelData(unittest.TestCase):
             self.data.metadata, metadata.IntervalChannelMetadata
         )
 
-    def test_mean_returns_mean_values(self):
-        self.data.raw_data = np.asarray([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
-        np.testing.assert_array_equal(
-            self.data.raw_data.mean(axis=1), self.data.mean
+    def test_mean_returns_data_values(self):
+        self.data.data = np.asarray([1, 2, 3])
+        np.testing.assert_array_equal(self.data.data, self.data.mean)
+
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "counts", "std"],
         )
 
-    def test_std_returns_std_values(self):
-        self.data.raw_data = np.asarray([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
+    def test_join_with_positions_subset_reduces_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.counts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.std = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(data_, attribute),
+                getattr(self.data, attribute)[[0, 2]],
+            )
         np.testing.assert_array_equal(
-            self.data.raw_data.std(axis=1), self.data.std
+            self.data.position_counts[[0, 2]], data_.position_counts
         )
 
-    def test_set_std_values(self):
-        self.data.std = np.asarray([[1, 2, 3], [1, 2, 3], [1, 2, 3]]).std(
-            axis=1
+    def test_join_with_positions_superset_masks_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.counts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.std = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(self.data, attribute), getattr(data_, attribute)[1:4]
+            )
+            self.assertIsInstance(
+                getattr(data_, attribute), np.ma.MaskedArray
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
         )
+        np.testing.assert_array_equal(positions, data_.position_counts)
+
+    def test_accessing_counts_calls_get_data_if_data_not_loaded(self):
+        _ = self.mock_data.counts
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_std_calls_get_data_if_data_not_loaded(self):
+        _ = self.mock_data.std
+        self.assertTrue(self.mock_data.get_data_called)
 
 
 class TestNormalizedChannelData(unittest.TestCase):
@@ -627,6 +995,18 @@ class TestSinglePointNormalizedChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.SinglePointNormalizedChannelData()
 
+        class MockData(data.SinglePointNormalizedChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
+
     def test_instantiate_class(self):
         pass
 
@@ -648,10 +1028,81 @@ class TestSinglePointNormalizedChannelData(unittest.TestCase):
             self.data.metadata, metadata.SinglePointNormalizedChannelMetadata
         )
 
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "normalized_data", "normalizing_data"],
+        )
+
+    def test_join_with_positions_subset_reduces_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.normalized_data = np.random.random(3)
+        self.data.normalizing_data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(data_, attribute),
+                getattr(self.data, attribute)[[0, 2]],
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts[[0, 2]], data_.position_counts
+        )
+
+    def test_join_with_positions_superset_masks_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.normalized_data = np.random.random(3)
+        self.data.normalizing_data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(self.data, attribute), getattr(data_, attribute)[1:4]
+            )
+            self.assertIsInstance(
+                getattr(data_, attribute), np.ma.MaskedArray
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        np.testing.assert_array_equal(positions, data_.position_counts)
+
+    def test_accessing_normalized_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalized_data
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_normalizing_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalizing_data
+        self.assertTrue(self.mock_data.get_data_called)
+
 
 class TestAverageNormalizedChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.AverageNormalizedChannelData()
+
+        class MockData(data.AverageNormalizedChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
 
     def test_instantiate_class(self):
         pass
@@ -662,7 +1113,6 @@ class TestAverageNormalizedChannelData(unittest.TestCase):
             "options",
             "data",
             "position_counts",
-            "raw_data",
             "attempts",
             "normalized_data",
             "normalizing_data",
@@ -676,10 +1126,83 @@ class TestAverageNormalizedChannelData(unittest.TestCase):
             self.data.metadata, metadata.AverageNormalizedChannelMetadata
         )
 
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "attempts", "normalized_data", "normalizing_data"],
+        )
+
+    def test_join_with_positions_subset_reduces_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.attempts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.normalized_data = np.random.random(3)
+        self.data.normalizing_data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(data_, attribute),
+                getattr(self.data, attribute)[[0, 2]],
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts[[0, 2]], data_.position_counts
+        )
+
+    def test_join_with_positions_superset_masks_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.attempts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.normalized_data = np.random.random(3)
+        self.data.normalizing_data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(self.data, attribute), getattr(data_, attribute)[1:4]
+            )
+            self.assertIsInstance(
+                getattr(data_, attribute), np.ma.MaskedArray
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        np.testing.assert_array_equal(positions, data_.position_counts)
+
+    def test_accessing_normalized_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalized_data
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_normalizing_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalizing_data
+        self.assertTrue(self.mock_data.get_data_called)
+
 
 class TestIntervalNormalizedChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.IntervalNormalizedChannelData()
+
+        class MockData(data.IntervalNormalizedChannelData):
+
+            def __init__(self):
+                super().__init__()
+                self.get_data_called = False
+
+            def get_data(self):
+                super().get_data()
+                self.get_data_called = True
+
+        self.mock_data = MockData()
 
     def test_instantiate_class(self):
         pass
@@ -690,7 +1213,6 @@ class TestIntervalNormalizedChannelData(unittest.TestCase):
             "options",
             "data",
             "position_counts",
-            "raw_data",
             "counts",
             "normalized_data",
             "normalizing_data",
@@ -703,6 +1225,69 @@ class TestIntervalNormalizedChannelData(unittest.TestCase):
         self.assertIsInstance(
             self.data.metadata, metadata.IntervalNormalizedChannelMetadata
         )
+
+    def test_dataframe_contains_additional_columns(self):
+        dataframe = self.data.get_dataframe()
+        self.assertTrue(dataframe.columns.size)
+        self.assertListEqual(
+            list(dataframe.columns),
+            ["data", "counts", "std", "normalized_data", "normalizing_data"],
+        )
+
+    def test_join_with_positions_subset_reduces_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.counts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.std = np.random.random(3)
+        self.data.normalized_data = np.random.random(3)
+        self.data.normalizing_data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(data_, attribute),
+                getattr(self.data, attribute)[[0, 2]],
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts[[0, 2]], data_.position_counts
+        )
+
+    def test_join_with_positions_superset_masks_all_attributes(self):
+        self.data.data = np.random.random(3)
+        self.data.counts = np.asarray([3, 4, 3], dtype=np.int64)
+        self.data.std = np.random.random(3)
+        self.data.normalized_data = np.random.random(3)
+        self.data.normalizing_data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        for attribute in data_._data_attributes:
+            self.assertTrue(getattr(data_, attribute).any())
+            np.testing.assert_array_equal(
+                getattr(self.data, attribute), getattr(data_, attribute)[1:4]
+            )
+            self.assertIsInstance(
+                getattr(data_, attribute), np.ma.MaskedArray
+            )
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[1:4]
+        )
+        np.testing.assert_array_equal(positions, data_.position_counts)
+
+    def test_accessing_normalized_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalized_data
+        self.assertTrue(self.mock_data.get_data_called)
+
+    def test_accessing_normalizing_data_calls_get_data_if_data_not_loaded(
+        self,
+    ):
+        _ = self.mock_data.normalizing_data
+        self.assertTrue(self.mock_data.get_data_called)
 
 
 class TestDataImporter(unittest.TestCase):

@@ -9,5 +9,18 @@ For version 0.1
 ===============
 
 * API somewhat similar to the legacy evefile package, but without C++ objects shining through
-* Support of monitors (including converting timestamps in position counts)
+* Support of monitors (including converting timestamps to position counts)
 
+
+For version 0.2
+===============
+
+* Re-add more complex data types for SDDs and cameras?
+
+
+Todos
+=====
+
+A list of todos, extracted from the code and documentation itself, and only meant as convenience for the main developers. Ideally, this list will be empty at some point.
+
+.. todolist::

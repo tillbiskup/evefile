@@ -466,7 +466,6 @@ import logging
 from functools import reduce
 
 import numpy as np
-from numpy import ma
 
 import evefile.entities
 import evefile.entities.data
@@ -616,56 +615,16 @@ class Join:
     def _fill_axes(self):
         for axis in self._axes:
             if axis.metadata.id in self.evefile.snapshots:
-                self.evefile.snapshots[axis.metadata.id].get_data()
-                axis.position_counts = np.searchsorted(
-                    axis.position_counts,
-                    self.evefile.snapshots[axis.metadata.id].position_counts,
+                axis.join(
+                    positions=self._result_positions,
+                    snapshot=self.evefile.snapshots[axis.metadata.id],
                 )
-                axis.data = np.insert(
-                    axis.data,
-                    axis.position_counts,
-                    self.evefile.snapshots[axis.metadata.id].data,
-                )
-            positions = (
-                np.searchsorted(
-                    axis.position_counts, self._result_positions, side="right"
-                )
-                - 1
-            )
-            axis.position_counts = self._result_positions
-            axis.data = axis.data[positions]
-            if np.any(np.where(positions < 0)):
-                axis.data = ma.masked_array(axis.data)
-                axis.data[np.where(positions < 0)] = ma.masked
+            else:
+                axis.join(positions=self._result_positions, fill=True)
 
     def _fill_channels(self):
         for channel in self._channels:
-            if len(self._result_positions) > len(channel.position_counts):
-                original_values = channel.data
-                channel.data = ma.masked_array(
-                    np.zeros(len(self._result_positions))
-                )
-                channel.data = ma.masked_array(channel.data)
-                positions = np.setdiff1d(
-                    self._result_positions, channel.position_counts
-                )
-                channel.data[
-                    np.searchsorted(
-                        self._result_positions, channel.position_counts
-                    ).astype(np.int64)
-                ] = original_values
-                channel.data[
-                    np.searchsorted(self._result_positions, positions).astype(
-                        np.int64
-                    )
-                ] = ma.masked
-            elif len(self._result_positions) < len(channel.position_counts):
-                channel.data = channel.data[
-                    np.searchsorted(
-                        channel.position_counts, self._result_positions
-                    ).astype(np.int64)
-                ]
-            channel.position_counts = self._result_positions
+            channel.join(positions=self._result_positions)
 
     def _assign_result(self):
         result = [*self._axes]

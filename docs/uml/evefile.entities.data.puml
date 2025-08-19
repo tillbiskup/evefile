@@ -66,14 +66,12 @@ class SinglePointNormalizedChannelData extends SinglePointChannelData implements
 class AverageChannelData extends ChannelData {
     {field} attempts : np.ndarray(dtype=int)
     mean : np.ndarray
-    std : np.ndarray
 }
 
 class AverageNormalizedChannelData extends AverageChannelData implements NormalizedChannelData {
 }
 
 class IntervalChannelData extends ChannelData {
-    raw_data : raggedarray
     {field} counts : np.ndarray(dtype=int)
     mean : np.ndarray
     std : np.ndarray

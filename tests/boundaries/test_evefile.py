@@ -310,7 +310,7 @@ class TestEveFile(unittest.TestCase):
         h5file.create()
         self.evefile = evefile.EveFile(filename=self.filename)
         log_message = evefile.entities.file.LogMessage()
-        log_message.from_string("20250812T09:06:05: Lorem ipsum")
+        log_message.from_string("2025-08-12T09:06:05: Lorem ipsum")
         self.evefile.log_messages.append(log_message)
         temp_stdout = StringIO()
         with contextlib.redirect_stdout(temp_stdout):
@@ -394,7 +394,7 @@ class TestEveFile(unittest.TestCase):
         h5file.create()
         self.evefile = evefile.EveFile(filename=self.filename)
         dataframe = self.evefile.get_dataframe()
-        self.assertEqual("PosRef", dataframe.index.name)
+        self.assertEqual("position", dataframe.index.name)
 
     def test_get_dataframe_uses_correct_mode(self):
         h5file = DummyHDF5File(filename=self.filename)

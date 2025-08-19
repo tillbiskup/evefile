@@ -10,15 +10,15 @@
 
 Data are organised in "datasets" within HDF5, and the
 :mod:`evefile.entities.data` module provides the relevant entities
-to describe these datasets. Although currently (as of 07/2024, eve version
-2.1) neither average nor interval detector channels save the individual
-data points, at least the former is a clear need of the
-engineers/scientists. Hence, the data model already respects this use
-case. As per position (count) there can be a variable number of measured
-points, the resulting array is no longer rectangular, but a "ragged
-array". While storing such arrays is possible directly in HDF5,
-the implementation within evefile is entirely independent of the actual
-representation in the eveH5 file.
+to describe these datasets.
+
+Please note that in contrast to the `evedata
+<https://evedata.docs.radiometry.de/>`_ package, the ``evefile`` package has
+a somewhat reduced data model, *e.g.* not considering individual data points
+for average and interval channels (that are currently not available from the
+underlying data files, anyway). Whether the corresponding module in the
+``evedata`` package will become a true superset of this module remains to be
+seen.
 
 
 Overview
@@ -127,6 +127,8 @@ import logging
 
 import h5py
 import numpy as np
+import pandas as pd
+from numpy import ma
 
 from evefile.entities import metadata
 
@@ -193,6 +195,8 @@ class Data:
         self.options = {}
         self.importer = []
         self._data = None
+        # List of attributes containing data
+        self._data_attributes = ["data"]
 
     def __str__(self):
         """
@@ -307,14 +311,102 @@ class Data:
                 )
         self.metadata.copy_attributes_from(source.metadata)
 
+    def show_info(self):
+        """
+        Print basic information regarding the contents of a data object.
+
+        Often, it is convenient to get a brief overview of the contents of
+        a data object. The output of this method currently contains the
+        following sections:
+
+        * metadata
+        * options (if present)
+        * fields
+
+        The output could look similar to the following:
+
+        .. code-block:: none
+
+            METADATA
+            name: jane
+
+            OPTIONS
+            some_option: value
+
+            FIELDS
+            data
+
+        Here, the ``METADATA`` block simply outputs what you would get with
+
+        .. code-block::
+
+            print(data.metadata)
+
+        If options are present, then the keys of the :attr:`options` dict
+        are returned in the ``OPTIONS`` block. Finally, the ``FIELDS`` block
+        provides an overview of all the attributes containing some kind of
+        data. This will differ depending on the type of data you are looking
+        at.
+        """
+        print("METADATA")
+        print(self.metadata)
+        if self.options:
+            print("\nOPTIONS")
+            for key in self.options:
+                print(key)
+        print("\nFIELDS")
+        for item in dir(self):
+            if (
+                not item.startswith("_")
+                and not callable(getattr(self, item))
+                and item not in ["importer", "metadata", "options"]
+            ):
+                print(item)
+
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as column.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as column.
+
+        """
+        if self.data is not None:
+            index = np.linspace(1, self.data.size, self.data.size)
+        else:
+            index = [0]
+        dataframe = pd.DataFrame(
+            {item: getattr(self, item) for item in self._data_attributes},
+            index=index,
+        )
+        return dataframe
+
 
 class MonitorData(Data):
     """
     Data from devices monitored, but not controlled by the eve engine.
 
+    Monitors are a concept stemming from the underlying `EPICS layer
+    <https://epics-controls.org/>`_ and are closely related to telemetry in
+    general. In short: You register a certain "device", record an initial
+    value, and from then on only changes to this value (together with a
+    timestamp). This allows you to record any relevant changes in your setup
+    with minimal overhead and data storage.
+
     In contrast to :class:`MeasureData`, :class:`MonitorData` do not have
     a position as primary axis, but a timestamp in milliseconds, *i.e.*,
-    the :attr:`milliseconds` attribute.
+    the :attr:`milliseconds` attribute. This means that without further ado,
+    you cannot plot monitor data against other data.
 
 
     Attributes
@@ -355,6 +447,33 @@ class MonitorData(Data):
             f"{self.metadata.name} ({self.metadata.id}) "
             f"<{type(self).__name__}>"
         )
+
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as column.
+
+        The index is named "milliseconds" and contains the values of the
+        :attr:`milliseconds` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as column.
+
+        """
+        dataframe = super().get_dataframe()
+        if self.milliseconds.ndim:
+            dataframe.index = self.milliseconds
+        dataframe.index.name = "milliseconds"
+        return dataframe
 
 
 class MeasureData(Data):
@@ -438,6 +557,99 @@ class MeasureData(Data):
     @position_counts.setter
     def position_counts(self, positions=None):
         self._position_counts = positions
+
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as column.
+
+        The index is named "positions" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as column.
+
+        """
+        dataframe = super().get_dataframe()
+        if self.position_counts is not None and self.position_counts.ndim:
+            dataframe.index = self.position_counts
+        dataframe.index.name = "position"
+        return dataframe
+
+    def join(self, positions=None):
+        """
+        Perform a left join of the data on the provided list of positions.
+
+        The main "quantisation" axis of the values for a device and the
+        common reference is the list of positions. To sensibly compare the
+        data of different devices or plot different device data against each
+        other, the data need to be harmonised, *i.e.* share a common set of
+        positions as indices.
+
+        If positions are not present in the original data, by default,
+        the corresponding entries will be masked and the :attr:`data`
+        attribute converted into a :class:`numpy.ma.MaskedArray`.
+
+        The reason for not using "NaN" (not a number) is, in short,
+        that "NaN" is only defined for floating point numbers, but neither
+        integers nor non-numeric values. Data, however, could generally
+        contain values that are *not* floating point numbers. For a more
+        detailed discussion, see the :mod:`evefile.controllers.joining`
+        module.
+
+        .. note::
+
+            The method will *alter* the data and positions of the underlying
+            :obj:`MeasureData` object. Hence, make sure to make a copy if
+            this is not your intended use case.
+
+
+        Parameters
+        ----------
+        positions : :class:`numpy.ndarray`
+            Array with positions the data should be mapped to.
+
+        Raises
+        ------
+        ValueError
+            Raised if no positions are provided
+
+        """
+        if positions is None:
+            raise ValueError("No positions provided")
+        for item in self._data_attributes:
+            data_ = getattr(self, item)
+            if len(positions) < len(self.position_counts):
+                # pylint: disable=unsubscriptable-object
+                data_ = data_[
+                    np.searchsorted(self.position_counts, positions).astype(
+                        np.int64
+                    )
+                ]
+            elif len(positions) > len(self.position_counts):
+                original_values = data_
+                data_ = ma.masked_array(np.zeros(len(positions)))
+                data_ = ma.masked_array(data_)
+                new_positions = np.setdiff1d(positions, self.position_counts)
+                data_[
+                    np.searchsorted(positions, self.position_counts).astype(
+                        np.int64
+                    )
+                ] = original_values
+                data_[
+                    np.searchsorted(positions, new_positions).astype(np.int64)
+                ] = ma.masked
+            setattr(self, item, data_)
+        self.position_counts = positions
 
     def _import_from_hdf5dataimporter(self, importer=None):
         """
@@ -554,6 +766,87 @@ class AxisData(MeasureData):
         )
         for attribute in importer.mapping.values():
             setattr(self, attribute, getattr(self, attribute)[indices])
+
+    def join(self, positions=None, fill=False, snapshot=None):
+        """
+        Perform a left join of the data on the provided list of positions.
+
+        The main "quantisation" axis of the values for a device and the
+        common reference is the list of positions. To sensibly compare the
+        data of different devices or plot different device data against each
+        other, the data need to be harmonised, *i.e.* share a common set of
+        positions as indices.
+
+        If positions are not present in the original data, by default,
+        the corresponding entries will be masked and the :attr:`data`
+        attribute converted into a :class:`numpy.ma.MaskedArray`.
+
+        The reason for not using "NaN" (not a number) is, in short,
+        that "NaN" is only defined for floating point numbers, but neither
+        integers nor non-numeric values. Data, however, could generally
+        contain values that are *not* floating point numbers. For a more
+        detailed discussion, see the :mod:`evefile.controllers.joining`
+        module.
+
+        .. note::
+
+            The method will *alter* the data and positions of the underlying
+            :obj:`MeasureData` object. Hence, make sure to make a copy if
+            this is not your intended use case.
+
+
+        Parameters
+        ----------
+        positions : :class:`numpy.ndarray`
+            Array with positions the data should be mapped to.
+
+        fill : :class:`bool`
+            Whether to fill missing positions with previous values.
+
+            Only in case a previous value exists for a given position (or a
+            snapshot containing a previous value is provided as additional
+            parameter), filling for the position will be performed.
+            Otherwise, the position is masked.
+
+        snapshot : :class:`AxisData`
+            Snapshot data corresponding to the original :obj:`AxisData` object.
+
+        Raises
+        ------
+        ValueError
+            Raised if no positions are provided
+
+        """
+        if snapshot is not None:
+            fill = True
+        if not fill:
+            super().join(positions=positions)
+        else:
+            if snapshot:
+                snapshot.get_data()
+                insert_positions = np.searchsorted(
+                    self.position_counts,
+                    snapshot.position_counts,
+                )
+                self.data = np.insert(
+                    self.data,
+                    insert_positions,
+                    snapshot.data,
+                )
+                self.position_counts = np.insert(
+                    self.position_counts,
+                    insert_positions,
+                    snapshot.position_counts,
+                )
+            new_positions = (
+                np.searchsorted(self.position_counts, positions, side="right")
+                - 1
+            )
+            self.position_counts = positions
+            self.data = self.data[new_positions]
+            if np.where(new_positions < 0)[0].size:
+                self.data = ma.masked_array(self.data)
+                self.data[np.where(new_positions < 0)] = ma.masked
 
 
 class ChannelData(MeasureData):
@@ -743,12 +1036,6 @@ class AverageChannelData(ChannelData):
     metadata : :class:`evefile.entities.metadata.AverageChannelMetadata`
         Relevant metadata for the individual device.
 
-    raw_data : Any
-        The raw individual values measured.
-
-    attempts : numpy.ndarray
-        Short description
-
 
     Examples
     --------
@@ -764,10 +1051,27 @@ class AverageChannelData(ChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.AverageChannelMetadata()
-        self.raw_data = None
-        self.attempts = np.ndarray(shape=[], dtype=int)
-        self._mean = None
-        self._std = None
+        self._attempts = None
+        self._data_attributes = ["data", "attempts"]
+
+    @property
+    def attempts(self):
+        """
+        Number of attempts needed until final data were recorded.
+
+        Returns
+        -------
+        attempts : :class:`numpy.ndarray`
+            Number of attempts
+
+        """
+        if self._attempts is None:
+            self.get_data()
+        return self._attempts
+
+    @attempts.setter
+    def attempts(self, attempts=None):
+        self._attempts = attempts
 
     @property
     def mean(self):
@@ -779,41 +1083,12 @@ class AverageChannelData(ChannelData):
         mean : :class:`numpy.ndarray`
             The mean of the values recorded.
 
-            If more values have been recorded than should be averaged
-            over, only the number of values to average over are taken from
-            the end of the individual :attr:`raw_data` row.
+            As at least up to eveH5 v7.x only the averaged values are stored
+            in the HDF5 file, this simply returns the values stored
+            in :attr:`data`.
 
         """
-        if self._mean is None:
-            if self.raw_data is not None:
-                self._mean = self.raw_data.mean(axis=1)
-            else:
-                self._mean = self.data
-        return self._mean
-
-    @property
-    def std(self):
-        """
-        Standard deviation values for channel data.
-
-        Returns
-        -------
-        mean : :class:`numpy.ndarray`
-            The standard deviation of the values recorded.
-
-            If more values have been recorded than should be averaged
-            over, only the number of values to average over are taken from
-            the end of the individual :attr:`raw_data` row to calculate
-            the standard deviation.
-
-        """
-        if self._std is None and self.raw_data is not None:
-            self._std = self.raw_data.std(axis=1)
-        return self._std
-
-    @std.setter
-    def std(self, std=None):
-        self._std = std
+        return self.data
 
 
 class IntervalChannelData(ChannelData):
@@ -838,14 +1113,6 @@ class IntervalChannelData(ChannelData):
     metadata : :class:`evefile.entities.metadata.IntervalChannelMetadata`
         Relevant metadata for the individual device.
 
-    raw_data : Any
-        The raw individual values measured in the given time interval.
-
-    counts : numpy.ndarray
-        The number of values measured in the given time interval.
-
-        Note that this value may change for each individual position.
-
 
     Examples
     --------
@@ -861,10 +1128,47 @@ class IntervalChannelData(ChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.IntervalChannelMetadata()
-        self.raw_data = None
-        self.counts = np.ndarray(shape=[], dtype=int)
-        self._mean = None
+        self._counts = None
         self._std = None
+        self._data_attributes = ["data", "counts", "std"]
+
+    @property
+    def counts(self):
+        """
+        The number of values measured in the given time interval.
+
+        Returns
+        -------
+        counts : :class:`numpy.ndarray`
+            Number of values measured in the given time interval
+
+        """
+        if self._counts is None:
+            self.get_data()
+        return self._counts
+
+    @counts.setter
+    def counts(self, counts=None):
+        self._counts = counts
+
+    @property
+    def std(self):
+        """
+        Standard deviation values for channel data.
+
+        Returns
+        -------
+        std : :class:`numpy.ndarray`
+            Standard deviation values for channel data.
+
+        """
+        if self._std is None:
+            self.get_data()
+        return self._std
+
+    @std.setter
+    def std(self, std=None):
+        self._std = std
 
     @property
     def mean(self):
@@ -876,33 +1180,12 @@ class IntervalChannelData(ChannelData):
         mean : :class:`numpy.ndarray`
             The mean of the values measured in the given time interval.
 
-        """
-        if self._mean is None:
-            if self.raw_data is not None:
-                self._mean = self.raw_data.mean(axis=1)
-            else:
-                self._mean = self.data
-        return self._mean
-
-    @property
-    def std(self):
-        """
-        Standard deviation values for channel data.
-
-        Returns
-        -------
-        mean : :class:`numpy.ndarray`
-            The standard deviation of the values measured in the given
-            time interval.
+            As at least up to eveH5 v7.x only the averaged values are stored
+            in the HDF5 file, this simply returns the values stored
+            in :attr:`data`.
 
         """
-        if self._std is None and self.raw_data is not None:
-            self._std = self.raw_data.std(axis=1)
-        return self._std
-
-    @std.setter
-    def std(self, std=None):
-        self._std = std
+        return self.data
 
 
 class NormalizedChannelData:
@@ -918,14 +1201,6 @@ class NormalizedChannelData:
     metadata : :class:`evefile.entities.metadata.AreaChannelMetadata`
         Relevant metadata for normalization.
 
-    normalized_data : Any
-        Data that have been normalized.
-
-        Normalization takes place by dividing by the values of the
-        normalizing channel.
-
-    normalizing_data : Any
-        Data used for normalization.
 
     Raises
     ------
@@ -947,8 +1222,45 @@ class NormalizedChannelData:
     def __init__(self):
         super().__init__()
         self.metadata = metadata.NormalizedChannelMetadata()
-        self.normalized_data = None
-        self.normalizing_data = None
+        self._normalized_data = None
+        self._normalizing_data = None
+
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
 
 
 class SinglePointNormalizedChannelData(
@@ -990,6 +1302,52 @@ class SinglePointNormalizedChannelData(
     def __init__(self):
         super().__init__()
         self.metadata = metadata.SinglePointNormalizedChannelMetadata()
+        self._data_attributes = [
+            "data",
+            "normalized_data",
+            "normalizing_data",
+        ]
+
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        if self._normalized_data is None:
+            self.get_data()
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        if self._normalizing_data is None:
+            self.get_data()
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
 
 
 class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
@@ -1029,6 +1387,53 @@ class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     def __init__(self):
         super().__init__()
         self.metadata = metadata.AverageNormalizedChannelMetadata()
+        self._data_attributes = [
+            "data",
+            "attempts",
+            "normalized_data",
+            "normalizing_data",
+        ]
+
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        if self._normalized_data is None:
+            self.get_data()
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        if self._normalizing_data is None:
+            self.get_data()
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
 
 
 class IntervalNormalizedChannelData(
@@ -1069,6 +1474,54 @@ class IntervalNormalizedChannelData(
     def __init__(self):
         super().__init__()
         self.metadata = metadata.IntervalNormalizedChannelMetadata()
+        self._data_attributes = [
+            "data",
+            "counts",
+            "std",
+            "normalized_data",
+            "normalizing_data",
+        ]
+
+    @property
+    def normalized_data(self):
+        """
+        Data that have been normalized.
+
+        Normalization takes place by dividing by the values of the
+        normalizing channel.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data that have been normalized.
+
+        """
+        if self._normalized_data is None:
+            self.get_data()
+        return self._normalized_data
+
+    @normalized_data.setter
+    def normalized_data(self, normalized_data=None):
+        self._normalized_data = normalized_data
+
+    @property
+    def normalizing_data(self):
+        """
+        Data used for normalization.
+
+        Returns
+        -------
+        normalized_data : Any
+            Data used for normalization.
+
+        """
+        if self._normalizing_data is None:
+            self.get_data()
+        return self._normalizing_data
+
+    @normalizing_data.setter
+    def normalizing_data(self, normalizing_data=None):
+        self._normalizing_data = normalizing_data
 
 
 class DataImporter:

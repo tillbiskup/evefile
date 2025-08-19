@@ -1,5 +1,7 @@
+import contextlib
 import logging
 import unittest
+from io import StringIO
 
 import numpy
 import numpy as np
@@ -62,6 +64,35 @@ class TestMetadata(unittest.TestCase):
         ):
             self.metadata.copy_attributes_from()
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
+    def test_print_with_options_prints_options(self):
+        self.metadata.options = {
+            "foo": "bar",
+            "bla": "blub",
+            "hugo": "heinz",
+        }
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        self.assertIn("SCALAR OPTIONS", output)
+        for key, value in self.metadata.options.items():
+            self.assertIn(f"{key}: {value}", output)
+
 
 class TestAbstractDeviceMetadata(unittest.TestCase):
     def setUp(self):
@@ -98,6 +129,21 @@ class TestMeasureMetadata(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
 
 class TestMonitorMetadata(unittest.TestCase):
     def setUp(self):
@@ -117,6 +163,21 @@ class TestMonitorMetadata(unittest.TestCase):
         for attribute in attributes:
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
 
 
 class TestDeviceMetadata(unittest.TestCase):
@@ -138,6 +199,21 @@ class TestDeviceMetadata(unittest.TestCase):
         for attribute in attributes:
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
 
 
 class TestAxisMetadata(unittest.TestCase):
@@ -161,6 +237,21 @@ class TestAxisMetadata(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
 
 class TestChannelMetadata(unittest.TestCase):
     def setUp(self):
@@ -182,6 +273,21 @@ class TestChannelMetadata(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
 
 class TestTimestampMetadata(unittest.TestCase):
     def setUp(self):
@@ -199,6 +305,21 @@ class TestTimestampMetadata(unittest.TestCase):
         for attribute in attributes:
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
 
 
 class TestSinglePointChannelMetadata(unittest.TestCase):
@@ -220,6 +341,21 @@ class TestSinglePointChannelMetadata(unittest.TestCase):
         for attribute in attributes:
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
 
 
 class TestAverageChannelMetadata(unittest.TestCase):
@@ -246,6 +382,21 @@ class TestAverageChannelMetadata(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
 
 class TestIntervalChannelMetadata(unittest.TestCase):
     def setUp(self):
@@ -267,6 +418,21 @@ class TestIntervalChannelMetadata(unittest.TestCase):
         for attribute in attributes:
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
 
 
 class TestNormalizedChannelMetadata(unittest.TestCase):
@@ -306,6 +472,21 @@ class TestSinglePointNormalizedChannelMetadata(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
 
 class TestAverageNormalizedChannelMetadata(unittest.TestCase):
     def setUp(self):
@@ -328,6 +509,21 @@ class TestAverageNormalizedChannelMetadata(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
 
 class TestIntervalNormalizedChannelMetadata(unittest.TestCase):
     def setUp(self):
@@ -349,3 +545,18 @@ class TestIntervalNormalizedChannelMetadata(unittest.TestCase):
         for attribute in attributes:
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)
