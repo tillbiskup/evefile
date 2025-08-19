@@ -18,7 +18,7 @@ Not yet released
 Version 0.1.0-rc.2
 ==================
 
-Not yet released
+Released 2025-08-19
 
 New features
 ------------
