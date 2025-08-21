@@ -9,17 +9,31 @@ evefile
 
 *Transitional package to read eveH5 files containing synchrotron radiometry data recorded at BESSY/MLS in Berlin.*
 
-Welcome! This is evefile, a Python package for **importing (synchrotron) radiometry data** obtained at one of the beamlines at **BESSY-II or MLS in Berlin**, mostly operated by the German National Metrology Institute, the `Physikalisch-Technische Bundesanstalt (PTB) <https://www.ptb.de/>`_. This package acts as transitional interface between the (eveH5) data files and the processing and analysis code. For related packages for importing, viewing, and analysing those data, have a look at the "related projects" section below.
+Welcome! This is evefile, a Python package for **importing (synchrotron) radiometry data** obtained at one of the beamlines at **BESSY-II or MLS in Berlin**, mostly operated by the German National Metrology Institute, the `Physikalisch-Technische Bundesanstalt (PTB) <https://www.ptb.de/>`_. This package acts as *transitional* interface between the (eveH5) data files and the processing and analysis code. For related packages for importing, viewing, and analysing those data, have a look at the "related projects" section below.
+
+Loading the contents of a data file of a measurement is as simple as::
+
+    import evefile
+
+    file = evefile.EveFile(filename="my_measurement_file.h5")
+
+Here, ``file`` contains all the information contained in the data file as a hierarchy of Python objects.
 
 
 Features
 ========
 
-A list of (planned) features:
+A list of features:
 
 * Importer for eve HDF5 files (used at PTB in Berlin, Germany)
 
 * Fully backwards-compatible to older eveH5 versions
+
+* Complete information available that is contained in an eveH5 file
+
+* Data are (only) loaded on demand, not when loading the file
+
+* Powerful and intuitive abstractions, allowing for associative access to data and information – beyond a purely tabular view of the data
 
 
 And to make it even more convenient for users and future-proof:
