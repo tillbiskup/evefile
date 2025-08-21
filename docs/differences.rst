@@ -28,7 +28,7 @@ Differences to previous interfaces
 
 In short:
 
-* Native Python
+* Native Python (yes, it should be OS-agnostic)
 * More intuitive interface
 * More abstractions (*e.g.*, mapping of options from snapshot to data classes)
 * Direct access to monitor data -- including mapping of timestamps to position counts

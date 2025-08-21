@@ -16,14 +16,31 @@ Welcome! This is evefile, a Python package for **importing (synchrotron) radiome
     This is a *transitional* package meant to be used only until the `evedata package <https://evedata.docs.radiometry.de/>`_ is considered sufficiently stable for routine use. It provides a rather low-level interface to the eveH5 data files, lacking many of the abstractions available within evedata. See :doc:`differences` for more details.
 
 
+Loading the contents of a data file of a measurement is as simple as:
+
+.. code-block::
+
+    import evefile
+
+    file = evefile.EveFile(filename="my_measurement_file.h5")
+
+Here, ``file`` contains all the information contained in the data file as a hierarchy of Python objects. For more details, see the documentation of the :mod:`evefile <evefile.boundaries.evefile>` module and the :doc:`usecases` section.
+
+
 Features
 ========
 
-A list of (planned) features:
+A list of features:
 
 * Importer for eve HDF5 files (used at PTB in Berlin, Germany)
 
 * Fully backwards-compatible to older eveH5 versions
+
+* Complete information available that is contained in an eveH5 file
+
+* Data are (only) loaded on demand, not when loading the file
+
+* Powerful and intuitive abstractions, allowing for associative access to data and information – beyond a purely tabular view of the data
 
 
 And to make it even more convenient for users and future-proof:
