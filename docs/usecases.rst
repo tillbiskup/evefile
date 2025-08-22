@@ -340,12 +340,54 @@ Exporting data to a data frame
 
 .. important::
 
-    While working with a Pandas DataFrame may seem convenient, you're loosing basically all the relevant metadata of the datasets. Remember: **Data without metadata are useless**. Hence, this method is rather a convenience method to be backwards-compatible to older interfaces, but it is explicitly *not* suggested for extensive use.
+    While working with a Pandas DataFrame (:class:`pandas.DataFrame`) may seem convenient, you're loosing basically all the relevant metadata of the datasets. Remember: **Data without metadata are useless**. Hence, this method is rather a convenience method to be backwards-compatible to older interfaces, but it is explicitly *not suggested for extensive use*.
+
+
+Generally, two scenarios are possible and supported:
+
+#. Export the data of a given dataset to a data frame.
+
+#. Export the data of a list of datasets contained in an :obj:`EveFile <evefile.boundaries.evefile.EveFile>` object to a data frame.
+
+Both scenarios are described in more detail below.
+
+
+Export data of a single dataset to a data frame
+-----------------------------------------------
+
+Every dataset, to be exact every object of type :class:`Data <evefile.entities.data.Data>`, has a method :meth:`get_dataframe() <evefile.entities.data.Data.get_dataframe>` that returns the data contained in the dataset as :class:`pandas.DataFrame`.
+
+A more complete example including loading an eveH5 file and retrieving datasets is given below. The key point here is the last line, calling :meth:`get_dataframe() <evefile.entities.data.Data.get_dataframe>` on the data object:
 
 
 .. code-block::
 
+    my_file = evefile.EveFile(filename="measurement.h5")
+    [axis, current] = my_file.get_data("Sim_Motor1", "Ring_1")
+
     axis_df = axis.get_dataframe()
+
+
+As mentioned above, the data frame will contain mostly the data, but nearly no metadata. For details of how exactly the resulting data frame looks like, consult the :meth:`get_dataframe() <evefile.entities.data.Data.get_dataframe>` method of the respective subclass of :class:`Data <evefile.entities.data.Data>`, *e.g.* :meth:`AxisData.get_dataframe() <evefile.entities.data.AxisData.get_dataframe>` or :meth:`SinglePointChannelData.get_dataframe() <evefile.entities.data.SinglePointChannelData.get_dataframe>`.
+
+
+.. note::
+
+    Please note that in case of getting a data frame for *individual* datasets, no :mod:`joining <evefile.controllers.joining>` of data will be performed before exporting the data to a :class:`pandas.DataFrame`. This is different to the situation described below where you export the data of a list of datasets to a data frame. Furthermore, in contrast to previous eveH5 interfaces, the data frames returend for more complicated channel types, such as :class:`AverageChannelData <evefile.entities.data.AverageChannelData>` and :class:`IntervalChannelData <evefile.entities.data.IntervalChannelData>`, will generally contain *less* columns, as some of the previously contained columns are scalar metadata that do *not* change for the individual values.
+
+
+Export data of a list of datasets to a data frame
+-------------------------------------------------
+
+While there may be some use cases for exporting the data of a single dataset to a data frame, probably the more frequent scenario is several datasets from a single eveH5 file that should be exported to a data frame for further handling.
+
+For this purpose, the :obj:`EveFile <evefile.boundaries.evefile.EveFile>` object has a :meth:`get_dataframe() <evefile.boundaries.evefile.EveFile.get_dataframe>` method as well, taking two parameters: ``data`` is a list of names (or IDs) of datasets, and ``mode`` (optionally) defines how to join data of the individual columns. From that it is already obvious that here, two things happen:
+
+#. Join the data of the respective datasets.
+
+#. Export the joined data to a :obj:`pandas.DataFrame`.
+
+Assuming again our scenario from above, where you have loaded an eveH5 file and stored the respective object in the ``my_file`` variable, getting a data frame consisting of the data of three datasets and explicitly setting the join mode looks as follows:
 
 
 .. code-block::
@@ -356,9 +398,32 @@ Exporting data to a data frame
     )
 
 
+As mentioned, previous to creating the data frame, data are joined. Hence, make sure you made yourself familiar with the concept of joining.
+
+
+.. note::
+
+    There are currently several different join modes implemented, and they have been renamed from the previous "fill modes". As said above, joining is far from trivial, and everybody using this feature is strongly advised to read the documentation available in the :mod:`joining <evefile.controllers.joining>` module.
+
+
+There is even one special case similar to what has been done in the past using previous interfaces: Getting a data frame containing the data of *all* datasets contained in an eveH5 file -- to be more exact, at least all data from the "main phase" of the scan (not including snapshots or monitors).
+
+Although it is strongly discouraged to use this functionality -- among other things because it violates central concepts of the interface -- in its most simple (and probably most dangerous) form the call would look like:
+
+
 .. code-block::
 
-    all_knowing_dataframe = my_file.get_dataframe()
+    almighty_dataframe = my_file.get_dataframe()
+
+
+What are some of the problems with this approach? Here is an incomplete list:
+
+* Lack of all relevant metadata.
+* No join mode explicitly provided, hence depending on the defaults set in the method (that may change over time).
+* Despite its name, the data frame is far from "almighty" and lacks relevant information.
+
+Hence, use entirely on your own risk. You have been warned... ;-)
+
 
 Working with monitors
 =====================
