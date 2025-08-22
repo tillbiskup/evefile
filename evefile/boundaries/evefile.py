@@ -488,6 +488,7 @@ class EveFile(File):
         dataframe = pd.DataFrame(
             {item.metadata.name: item.data for item in joined_data}
         )
+        dataframe.index = joined_data[0].position_counts
         dataframe.index.name = "position"
         return dataframe
 

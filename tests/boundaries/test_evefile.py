@@ -396,6 +396,13 @@ class TestEveFile(unittest.TestCase):
         dataframe = self.evefile.get_dataframe()
         self.assertEqual("position", dataframe.index.name)
 
+    def test_dataframe_returns_positions_as_index(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        dataframe = self.evefile.get_dataframe()
+        self.assertGreater(dataframe.index[0], 0)
+
     def test_get_dataframe_uses_correct_mode(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
