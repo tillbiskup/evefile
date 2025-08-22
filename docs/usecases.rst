@@ -313,7 +313,9 @@ For each motor axis and detector channel, in the original eveH5 file only those 
 
 To be exact, being commensurate is only a necessary, but not a sufficient criterion, as not only the shape needs to be commensurate, but the indices (in this case the positions) be identical.
 
-For further details and background on joining, see the documentation of the :mod:`joining <evefile.controllers.joining>` module. And be aware that joining is far from being a trivial concept.
+For further details and background on joining, see the documentation of the :mod:`joining <evefile.controllers.joining>` module. And be aware that *joining is far from being a trivial concept*.
+
+Without further ado, if you know the names (or alternatively the IDs) of the datasets in your eveH5 file that you need to be joined, use the method :meth:`EveFile.get_joined_data() <evefile.boundaries.evefile.EveFile.get_joined_data>` and provide both, the list of names of the data(sets) and (optionally) the join mode:
 
 
 .. code-block::
@@ -324,13 +326,21 @@ For further details and background on joining, see the documentation of the :mod
     )
 
 
+The result, as you can see here, will be as many datasets with joined data as you asked for. Each of these datasets is a subclass of :class:`MeasureData <evefile.entities.data.MeasureData>` and *a copy of the original data* contained in your :obj:`EveFile <evefile.boundaries.evefile.EveFile>` object (the beast you access via ``my_file`` in the code examples).
+
+
+.. note::
+
+    There are currently several different join modes implemented, and they have been renamed from the previous "fill modes". As said above, joining is far from trivial, and everybody using this feature is strongly advised to read the documentation available in the :mod:`joining <evefile.controllers.joining>` module.
+
+
 Exporting data to a data frame
 ==============================
 
 
 .. important::
 
-    While working with a Pandas DataFrame may seem convenient, you're loosing basically all the relevant metadata of the datasets. Hence, this method is rather a convenience method to be backwards-compatible to older interfaces, but it is explicitly *not* suggested for extensive use.
+    While working with a Pandas DataFrame may seem convenient, you're loosing basically all the relevant metadata of the datasets. Remember: **Data without metadata are useless**. Hence, this method is rather a convenience method to be backwards-compatible to older interfaces, but it is explicitly *not* suggested for extensive use.
 
 
 .. code-block::
