@@ -562,7 +562,7 @@ class MeasureData(Data):
         """
         Retrieve Pandas DataFrame with data as column.
 
-        The index is named "positions" and contains the values of the
+        The index is named "position" and contains the values of the
         :attr:`position_counts` attribute of the data object.
 
         .. important::
@@ -1090,6 +1090,35 @@ class AverageChannelData(ChannelData):
         """
         return self.data
 
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains two columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * attempts
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
+
 
 class IntervalChannelData(ChannelData):
     """
@@ -1186,6 +1215,36 @@ class IntervalChannelData(ChannelData):
 
         """
         return self.data
+
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains three columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * counts
+        * std
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
 
 
 class NormalizedChannelData:
@@ -1349,6 +1408,36 @@ class SinglePointNormalizedChannelData(
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
 
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains three columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * normalized_data
+        * normalizing_data
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
+
 
 class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     """
@@ -1434,6 +1523,37 @@ class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     @normalizing_data.setter
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
+
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains four columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * attempts
+        * normalized_data
+        * normalizing_data
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
 
 
 class IntervalNormalizedChannelData(
@@ -1522,6 +1642,38 @@ class IntervalNormalizedChannelData(
     @normalizing_data.setter
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
+
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains five columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * counts
+        * std
+        * normalized_data
+        * normalizing_data
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
 
 
 class DataImporter:

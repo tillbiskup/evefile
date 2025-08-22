@@ -445,6 +445,18 @@ class EveFile(File):
         The names of the columns of the returned DataFrame are the names (not
         IDs) of the respective datasets.
 
+        .. note::
+
+            At least for the time being, for each data object involved only
+            the ``data`` attribute will be contained in the returned
+            DataFrame as a column. This is of particular importance for more
+            complicated data types, such as :class:`NormalizedChannelData
+            <evefile.entities.data.NormalizedChannelData>`,
+            :class:`AverageChannelData
+            <evefile.entities.data.AverageChannelData>`,
+            and :class:`IntervalChannelData
+            <evefile.entities.data.IntervalChannelData>`.
+
         .. important::
 
             While working with a Pandas DataFrame may seem convenient,

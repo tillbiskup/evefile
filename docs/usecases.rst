@@ -373,7 +373,7 @@ As mentioned above, the data frame will contain mostly the data, but nearly no m
 
 .. note::
 
-    Please note that in case of getting a data frame for *individual* datasets, no :mod:`joining <evefile.controllers.joining>` of data will be performed before exporting the data to a :class:`pandas.DataFrame`. This is different to the situation described below where you export the data of a list of datasets to a data frame. Furthermore, in contrast to previous eveH5 interfaces, the data frames returend for more complicated channel types, such as :class:`AverageChannelData <evefile.entities.data.AverageChannelData>` and :class:`IntervalChannelData <evefile.entities.data.IntervalChannelData>`, will generally contain *less* columns, as some of the previously contained columns are scalar metadata that do *not* change for the individual values.
+    Please note that in case of getting a data frame for *individual* datasets, no :mod:`joining <evefile.controllers.joining>` of data will be performed before exporting the data to a :class:`pandas.DataFrame`. This is different to the situation described below where you export the data of a list of datasets to a data frame. Furthermore, in contrast to previous eveH5 interfaces, the data frames returned for more complicated channel types, such as :class:`NormalizedChannelData <evefile.entities.data.NormalizedChannelData>`, :class:`AverageChannelData <evefile.entities.data.AverageChannelData>`, and :class:`IntervalChannelData <evefile.entities.data.IntervalChannelData>`, will generally contain *less* columns, as some of the previously contained columns are scalar metadata that do *not* change for the individual values. Nevertheless, all these more complicated channel types will contain more than one column for data in the data frame.
 
 
 Export data of a list of datasets to a data frame
@@ -406,7 +406,13 @@ As mentioned, previous to creating the data frame, data are joined. Hence, make 
     There are currently several different join modes implemented, and they have been renamed from the previous "fill modes". As said above, joining is far from trivial, and everybody using this feature is strongly advised to read the documentation available in the :mod:`joining <evefile.controllers.joining>` module.
 
 
-There is even one special case similar to what has been done in the past using previous interfaces: Getting a data frame containing the data of *all* datasets contained in an eveH5 file -- to be more exact, at least all data from the "main phase" of the scan (not including snapshots or monitors).
+.. important::
+
+    Different to previous interfaces, the data frame will only contain one column per dataset, and this column comes directly from the :attr:`Data.data <evefile.entities.data.Data.data>` attribute. Hence, even for more complicated channel types, such as :class:`NormalizedChannelData <evefile.entities.data.NormalizedChannelData>`, :class:`AverageChannelData <evefile.entities.data.AverageChannelData>`, and :class:`IntervalChannelData <evefile.entities.data.IntervalChannelData>`, only one column will exist. If you need to get access to these additional data columns and you still want to use a :class:`pandas.DataFrame`, use the :meth:`Data.get_dataframe() <evefile.entities.data.Data.get_dataframe>` method of the individual dataset, as described above.
+
+
+
+There is even one **special case** similar to what has been done in the past using previous interfaces: Getting a data frame containing the data of *all* datasets contained in an eveH5 file -- to be more exact, at least all data from the "main phase" of the scan (not including snapshots or monitors).
 
 Although it is strongly discouraged to use this functionality -- among other things because it violates central concepts of the interface -- in its most simple (and probably most dangerous) form the call would look like:
 
@@ -418,11 +424,11 @@ Although it is strongly discouraged to use this functionality -- among other thi
 
 What are some of the problems with this approach? Here is an incomplete list:
 
-* Lack of all relevant metadata.
+* Loss of all relevant metadata.
 * No join mode explicitly provided, hence depending on the defaults set in the method (that may change over time).
 * Despite its name, the data frame is far from "almighty" and lacks relevant information.
 
-Hence, use entirely on your own risk. You have been warned... ;-)
+Hence, use entirely on your own risk -- at best not at all. You have been warned... ;-)
 
 
 Working with monitors
