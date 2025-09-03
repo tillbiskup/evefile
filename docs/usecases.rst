@@ -168,7 +168,7 @@ If you have a look at the documentation of the :meth:`EveFile.get_data() <evefil
 
 .. code-block::
 
-    [axis, current] = my_file.get_data("Sim_Motor1", "Ring_1")
+    [axis, current] = my_file.get_data(["Sim_Motor1", "Ring_1"])
 
 
 Note that in any case, the resulting data are objects of class :class:`Data <evefile.entities.data.Data>`, and in this particular case of classes :class:`AxisData <evefile.entities.data.AxisData>` and :class:`SinglePointChannelData <evefile.entities.data.SinglePointChannelData>`, respectively. Why this? Because every dataset comes not only with (mostly numerical) data, but corresponding metadata as well. And **data without metadata are useless**. So what now? How to get more information on the individual data(sets) you've just extracted from the loaded eveH5 file? Carry on reading...
@@ -199,7 +199,7 @@ Suppose you had loaded a file ``measurement.h5`` and extracted two datasets name
 .. code-block::
 
     my_file = evefile.EveFile(filename="measurement.h5")
-    [axis, current] = my_file.get_data("Sim_Motor1", "Ring_1")
+    [axis, current] = my_file.get_data(["Sim_Motor1", "Ring_1"])
 
 
 Now you have two datasets available, with the variable names ``axis`` and ``current``. To get more information on either of them, use their :meth:`show_info() <evefile.entities.data.Data.show_info>` method:
@@ -265,7 +265,7 @@ Suppose you had loaded a file ``measurement.h5`` and extracted two datasets name
 .. code-block::
 
     my_file = evefile.EveFile(filename="measurement.h5")
-    [axis, current] = my_file.get_data("Sim_Motor1", "Ring_1")
+    [axis, current] = my_file.get_data(["Sim_Motor1", "Ring_1"])
 
 
 Now you have two datasets available, with the variable names ``axis`` and ``current``. Every dataset is an instance of the (subclass of the) class :obj:`Data <evefile.entities.data.Data>`, with metadata and data.
@@ -363,7 +363,7 @@ A more complete example including loading an eveH5 file and retrieving datasets 
 .. code-block::
 
     my_file = evefile.EveFile(filename="measurement.h5")
-    [axis, current] = my_file.get_data("Sim_Motor1", "Ring_1")
+    [axis, current] = my_file.get_data(["Sim_Motor1", "Ring_1"])
 
     axis_df = axis.get_dataframe()
 
