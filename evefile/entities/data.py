@@ -788,6 +788,10 @@ class AxisData(MeasureData):
         detailed discussion, see the :mod:`evefile.controllers.joining`
         module.
 
+        If a snapshot preceding a non-existing position is available,
+        the value from this snapshot is automatically taken for the given
+        position.
+
         .. note::
 
             The method will *alter* the data and positions of the underlying
