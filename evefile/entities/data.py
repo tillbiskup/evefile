@@ -701,6 +701,47 @@ class DeviceData(MeasureData):
         super().__init__()
         self.metadata = metadata.DeviceMetadata()
 
+    def join(self, positions=None):
+        """
+        Perform a left join of the data on the provided list of positions.
+
+        The main "quantisation" axis of the values for a device and the
+        common reference is the list of positions. To sensibly compare the
+        data of different devices or plot different device data against each
+        other, the data need to be harmonised, *i.e.* share a common set of
+        positions as indices.
+
+        If positions are not present in the original data, the previous
+        value present is automatically taken for this position. This is a
+        valid assumption, as the underlying EPICS monitors only record a
+        new value if the actual value has changed.
+
+        .. note::
+
+            The method will *alter* the data and positions of the underlying
+            :obj:`DeviceData` object. Hence, make sure to make a copy if
+            this is not your intended use case.
+
+
+        Parameters
+        ----------
+        positions : :class:`numpy.ndarray`
+            Array with positions the data should be mapped to.
+
+        Raises
+        ------
+        ValueError
+            Raised if no positions are provided
+
+        """
+        if positions is None:
+            raise ValueError("No positions provided")
+        new_positions = (
+            np.searchsorted(self.position_counts, positions, side="right") - 1
+        )
+        self.position_counts = positions
+        self.data = self.data[new_positions]
+
 
 class AxisData(MeasureData):
     """

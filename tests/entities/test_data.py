@@ -459,6 +459,33 @@ class TestDeviceData(unittest.TestCase):
     def test_metadata_are_of_corresponding_type(self):
         self.assertIsInstance(self.data.metadata, metadata.DeviceMetadata)
 
+    def test_join_with_positions_subset_reduces(self):
+        self.data.data = np.random.random(3)
+        self.data.position_counts = np.asarray([3, 4, 5], dtype=np.int64)
+        positions = self.data.position_counts[[0, 2]]
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(self.data.data[[0, 2]], data_.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts[[0, 2]], data_.position_counts
+        )
+
+    def test_join_with_positions_superset_fills(self):
+        self.data.data = np.random.random(4)
+        self.data.position_counts = np.asarray([2, 3, 4, 5], dtype=np.int64)
+        positions = np.asarray([2, 3, 4, 5, 6], dtype=np.int64)
+        data_ = copy.copy(self.data)
+        data_.join(positions=positions)
+        self.assertTrue(data_.data.any())
+        np.testing.assert_array_equal(data_.data[0:4], self.data.data)
+        np.testing.assert_array_equal(
+            self.data.position_counts, data_.position_counts[0:4]
+        )
+        self.assertEqual(self.data.data[-1], data_.data[-1])
+        np.testing.assert_array_equal(data_.position_counts, positions)
+        self.assertNotIsInstance(data_.data, np.ma.MaskedArray)
+
 
 class TestAxisData(unittest.TestCase):
     def setUp(self):
