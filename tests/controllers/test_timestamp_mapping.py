@@ -27,7 +27,6 @@ class MockEveFile:
         self.position_timestamps = evefile.entities.data.TimestampData()
         self.position_timestamps.position_counts = np.arange(1, 11)
         self.position_timestamps.data = np.arange(0, 10) * 1002
-        self.position_timestamps.data = np.arange(0, 10) * 1002
 
 
 class TestMapper(unittest.TestCase):

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy import ma
 
-from evefile.controllers import joining
+from evefile.controllers import joining, timestamp_mapping
 import evefile.entities.data
 
 
@@ -27,12 +27,31 @@ class MockAxis(evefile.entities.data.AxisData):
         self.metadata.name = name
 
 
+class MockMonitor(evefile.entities.data.MonitorData):
+    def __init__(
+        self,
+        data=np.random.random(5),
+        milliseconds=np.asarray([-1, -1, 2000, 6200, 9100]),
+        name="",
+    ):
+        super().__init__()
+        self.data = data
+        self.milliseconds = milliseconds
+        self.metadata.name = name
+
+
 class MockEveFile:
     def __init__(self, snapshots=False):
         self.data = {
             "SimChan:01": MockChannel(),
             "SimMot:01": MockAxis(),
         }
+        self.monitors = {
+            "SimMonitor:01.STAT": MockMonitor(name="Status"),
+        }
+        self.position_timestamps = evefile.entities.data.TimestampData()
+        self.position_timestamps.position_counts = np.arange(1, 11)
+        self.position_timestamps.data = np.arange(0, 10) * 1002
         if snapshots:
             self.snapshots = {
                 "SimChan:01": MockChannel(
@@ -362,6 +381,29 @@ class TestChannelPositions(unittest.TestCase):
                 self.join.evefile.data["SimChan:01"].position_counts,
                 self.join.evefile.data["SimChan:02"].position_counts,
             ),
+        )
+
+    def test_join_with_monitors(self):
+        self.join.evefile.data = {
+            "SimChan:01": MockChannel(
+                data=np.random.random(5), positions=np.linspace(0, 4, 5)
+            ),
+            "SimMot:01": MockAxis(
+                data=np.random.random(7), positions=np.linspace(0, 6, 7)
+            ),
+        }
+        data = list(self.join.evefile.data.values())
+        mapper = timestamp_mapping.Mapper(self.join.evefile)
+        device_data = mapper.map(list(self.join.evefile.monitors.keys())[0])
+        data.append(device_data)
+        result = self.join.join(data=data)
+        self.assertTrue(result)
+        self.assertEqual(len(result), 3)
+        for item in result:
+            self.assertIsInstance(item, evefile.entities.data.MeasureData)
+        print(result)
+        np.testing.assert_array_equal(
+            result[0].position_counts, result[-1].position_counts
         )
 
 

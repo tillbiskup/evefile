@@ -536,6 +536,7 @@ class Join:
         self._channel_indices = []
         self._axes = []
         self._channels = []
+        self._monitors = []
         self._result_positions = None
         self.evefile = evefile
 
@@ -599,6 +600,7 @@ class Join:
         self._assign_result_positions()
         self._fill_axes()
         self._fill_channels()
+        self._fill_monitors()
         return self._assign_result()
 
     def _sort_data(self, data):
@@ -608,6 +610,8 @@ class Join:
                 self._channel_indices.append(idx)
             if isinstance(item, evefile.entities.data.AxisData):
                 self._axes.append(copy.copy(item))
+            if isinstance(item, evefile.entities.data.DeviceData):
+                self._monitors.append(copy.copy(item))
 
     def _assign_result_positions(self):
         pass
@@ -626,10 +630,15 @@ class Join:
         for channel in self._channels:
             channel.join(positions=self._result_positions)
 
+    def _fill_monitors(self):
+        for monitor in self._monitors:
+            monitor.join(positions=self._result_positions)
+
     def _assign_result(self):
         result = [*self._axes]
         for idx, item in enumerate(self._channels):
             result.insert(self._channel_indices[idx], item)
+        result.extend(self._monitors)
         return result
 
 

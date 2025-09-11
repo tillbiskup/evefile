@@ -12,7 +12,13 @@ Not yet released
 
 * First public release
 
-* ...
+
+New features
+------------
+
+* :meth:`evefile.entities.data.Data.get_monitors` to get a (list of) monitor(s) converted into datasets with timestamps mapped to position counts.
+* :meth:`evefile.entities.data.Data.get_snapshots` to get an overview of all snapshots as a single Pandas DataFrame.
+* Joining takes monitors into account if provided.
 
 
 Version 0.1.0-rc.2
