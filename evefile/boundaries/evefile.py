@@ -148,7 +148,7 @@ import pandas as pd
 
 from evefile.entities.file import File
 from evefile.boundaries.eveh5 import HDF5File
-from evefile.controllers import version_mapping, joining
+from evefile.controllers import version_mapping, joining, timestamp_mapping
 
 
 logger = logging.getLogger(__name__)
@@ -221,6 +221,11 @@ class EveFile(File):
         The keys of the dictionary are the (guaranteed to be unique) HDF
         dataset names, not the "given" names usually familiar to the users.
 
+        **Please note:** For monitors, in contrast to data stored in the
+        :attr:`data` attribute, names are *not unique*. Hence, the only way to
+        address an individual monitor unequivocally is by its ID that is
+        identical to the HDF dataset name.
+
         Each item is an instance of
         :class:`evefile.entities.data.MonitorData`.
 
@@ -262,6 +267,7 @@ class EveFile(File):
         super().__init__()
         self.filename = filename
         self._join_factory = joining.JoinFactory(evefile=self)
+        self._monitor_mapper = timestamp_mapping.Mapper(evefile=self)
         if load:
             if not filename:
                 raise ValueError("No filename given")
@@ -565,3 +571,48 @@ class EveFile(File):
         print("\nMONITORS")
         for item in self.monitors.values():
             print(item)
+
+    def get_monitors(self, monitors=None):
+        """
+        Retrieve monitors as mapped device data objects by ID.
+
+        While you can get the original monitor data objects by accessing the
+        :attr:`monitors <evefile.entities.file.File.monitors>` attribute
+        directly, there, they are stored as
+        :obj:`MonitorData <evefile.entities.data.MonitorData>` objects with
+        timestamps instead of position counts. To relate monitors to the
+        measured data, the former need to be mapped to position counts.
+
+        .. note::
+
+            Monitors, in contrast to data objects stored in the
+            :attr:`data <evefile.entities.file.File.data>` attribute,
+            have *no unique names*. Hence, the only way to unequivocally
+            access a given monitor (or the respective, mapped
+            :obj:`DeviceData <evefile.entities.data.DeviceData>` object) is
+            by means of its unique ID.
+
+
+        Parameters
+        ----------
+        monitors : :class:`str` | :class:`list`
+            Name or list of names of monitors to retrieve
+
+        Returns
+        -------
+        device_data : :class:`evefile.entities.data.DeviceData` | :class:`list`
+            DeviceData object(s) corresponding to the ID(s).
+
+            In case of a list of device data objects, each object is of type
+            :class:`evefile.entities.data.DeviceData`.
+
+        """
+        device_data = []
+        if isinstance(monitors, (list, tuple)):
+            for item in monitors:
+                device_data.append(self._monitor_mapper.map(item))
+        else:
+            device_data.append(self._monitor_mapper.map(monitors))
+        if len(device_data) == 1:
+            device_data = device_data[0]
+        return device_data

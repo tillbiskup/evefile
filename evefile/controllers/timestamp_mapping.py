@@ -165,6 +165,8 @@ class Mapper:
         if not monitor:
             raise ValueError("Need monitor to map timestamps to positions.")
         monitor_data = self.evefile.monitors[monitor]
+        # Need to force load data before mapping
+        monitor_data.get_data()
         device_data = evefile.entities.data.DeviceData()
         device_data.metadata.copy_attributes_from(monitor_data.metadata)
         # Take only second of each duplicate value

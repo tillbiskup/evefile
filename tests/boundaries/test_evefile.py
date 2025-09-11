@@ -26,6 +26,23 @@ class DummyHDF5File:
             file.attrs["StartTimeISO"] = np.bytes_(["2024-06-03T12:01:32"])
             file.attrs["EndTimeISO"] = np.bytes_(["2024-06-03T12:01:37"])
             file.attrs["Simulation"] = np.bytes_(["no"])
+            monitors = file.create_group("device")
+            simmon = monitors.create_dataset(
+                "SimMonitor:01.STAT",
+                data=np.ones(
+                    [5],
+                    dtype=np.dtype(
+                        [
+                            ("mSecsSinceStart", "<i4"),
+                            ("SimMonitor:01.STAT", "<f8"),
+                        ]
+                    ),
+                ),
+            )
+            simmon["mSecsSinceStart"] = np.asarray([-1, -1, 2000, 6200, 9100])
+            simmon["SimMonitor:01.STAT"] = np.random.random(5)
+            simmon.attrs["Name"] = np.bytes_(["Status"])
+            simmon.attrs["Access"] = np.bytes_(["ca:foobar"])
             c1 = file.create_group("c1")
             main = c1.create_group("main")
             meta = c1.create_group("meta")
@@ -413,3 +430,23 @@ class TestEveFile(unittest.TestCase):
             self.evefile.data["SimChan:01"].position_counts,
         )
         self.assertEqual(len(positions), len(dataframe.index))
+
+    def test_get_monitor_returns_device_data(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        monitor_name = list(self.evefile.monitors.keys())[0]
+        self.assertIsInstance(
+            self.evefile.get_monitors(monitor_name),
+            evefile.entities.data.DeviceData,
+        )
+
+    def test_get_monitor_list_returns_device_data_as_array(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        monitor_name = list(self.evefile.monitors.keys())[0]
+        device_data = self.evefile.get_monitors([monitor_name, monitor_name])
+        self.assertIsInstance(device_data, list)
+        for item in device_data:
+            self.assertIsInstance(item, evefile.entities.data.DeviceData)
