@@ -431,16 +431,146 @@ What are some of the problems with this approach? Here is an incomplete list:
 Hence, use entirely on your own risk -- at best not at all. You have been warned... ;-)
 
 
-Working with monitors
-=====================
+Telemetry (I): Snapshots
+========================
 
-(and: what are monitors, anyway?)
+Most people using the eve measurement program are somewhat familiar with the concept of snapshots. Basically, a snapshot does what its name says: recording the current state of a list of devices, be it detector channels or motor axes. The most typical situation in a scan is two "snapshot modules" upstream of any other parts of the scan, one for detector channels and the other for motor axes. Thus, the state of all channels and axes defined in the current measurement station description is recorded.
+Generally, it may be sensible to record a snapshot for all these devices after the actual scan has been carried out, but this needs to be discussed by those people responsible for designing scan descriptions.
 
 
+Snapshots serve generally two functions:
 
-Further use cases
-=================
+#. Provide base values for axes.
 
-For now, just a list of use cases to be detailed:
+   In case of joining data using :meth:`EveFile.get_joined_data() <evefile.boundaries.evefile.EveFile.get_joined_data>`, for axes, typically the previous values are used for positions no axes values have been recorded. Snapshots are used if available.
 
-* ...
+#. Provide telemetry data for the setup the data were recorded with.
+
+   Snapshots regularly contain many more parameters than motor axes used and detector channels recorded. Generally, this provides a lot of telemetry data regarding the setup used for recording the data.
+
+The first function is served by the :meth:`EveFile.get_joined_data() <evefile.boundaries.evefile.EveFile.get_joined_data>` method automatically. The second function can be served by having a look at a summary containing all snapshot data. This is the aim of the method :meth:`EveFile.get_snapshots() <evefile.boundaries.evefile.EveFile.get_snapshots>`: returning a Pandas DataFrame containing all snapshots as rows and the position counts as columns.
+
+Getting a dataframe containing all the snapshot datasets as *rows* and the position counts as *columns* is as simple as:
+
+
+.. code-block::
+
+    my_file = evefile.EveFile(filename="measurement.h5")
+    snapshots = my_file.get_snapshots()
+
+
+The resulting :class:`pandas.DataFrame` can be output directly in the Python console, just calling the variable ``snapshots``. The result may look similar to the following:
+
+
+.. code-block::
+
+                                 1             2
+    Sim_Filter_1      b'Undefined'           NaN
+    Sim_Filter_2      b'Undefined'           NaN
+    Keithley_196               NaN           NaN
+    Channel/0                  NaN           0.0
+    Sim_Motor1                20.0           NaN
+    SimFilter                  NaN  b'Undefined'
+    Ring_1                     NaN    296.249928
+    Lebensdauer_1              NaN      7.756106
+    TopupState                 NaN      b'decay'
+    Ring_2                     NaN    296.855205
+    Lebensdauer_2              NaN      7.053617
+    mlsRing_1                  NaN       72.9936
+    mlsLebensdauer_1           NaN     16.343343
+    mlsRing_2                  NaN           0.0
+    mlsLebensdauer_2           NaN           0.0
+    mlsRing_3                  NaN      0.250081
+    mlsLebensdauer_3           NaN      0.705209
+
+
+Note that this dataframe only serves as a somewhat convenient overview table of the individual values recorded in the snapshots. There is no point in trying to plot data here, as some of the values are anyway non-numeric -- not to mention that for an axis snapshot, the channels have ``NaN`` as value and *vice versa*.
+
+As mentioned in the heading of this use case, think of the snapshots as telemetry data, providing you with an overview of the state of your setup at a given point in time.
+
+There is another type of telemetry data discussed in the next section: monitors. See below for details.
+
+
+Telemetry (II): Working with monitors
+=====================================
+
+First a quick introduction into monitors. EPICS knows the concept of a monitor: You attach an observer to a process variable (PV) and get noticed only when the value of the observed PV changes. This concept is used within the eve measurement program as well, and you can set monitors to a large list of PVs defined in your measurement station description from within the eve GUI and eventually a scan description.
+
+From the point of view of the eve engine, the main quantisation axis is the list of position counts -- one position reflecting a given state of all motor axes set and all detector axes read. However, position counts only exist for everything under control of the scan engine. Monitors by definition are not under control of the scan engine, but issue their updates independently whenever the value changes. This results in monitor datasets in the measurement files having timestamps (in milliseconds since start of the scan) instead of position counts. To relate the monitor data to the position counts, a mapping needs to be performed. Generally, this is non-trivial and should be different for motor axes and detector channels due to the design of the current scan engine. However, due to the lack of the necessary information stored in the data files, only one kind of mapping can be performed. For details, see the documentation of the :mod:`timestamp_mapping <evefile.controllers.timestamp_mapping>` module.
+
+In any case, before you can sensibly work with monitors, you first need to map their timestamps to position counts. This is handled automatically for you when you use the :meth:`EveFile.get_monitors() <evefile.boundaries.evefile.EveFile.get_monitors>` method. However, before we get there, let's go step by step. First, let's load a file containing monitor data and get an overview of the file just loaded:
+
+
+.. code-block::
+
+    file = evefile.EveFile(filename="monitors.h5")
+    file.show_info()
+
+
+The result may look as follows:
+
+.. code-block:: none
+
+    METADATA
+                           filename: monitors.h5
+                      eveh5_version: 7.1
+                        eve_version: 2.2.0
+                        xml_version: 9.2
+                measurement_station: TEST
+                              start: 2025-05-15 15:18:10
+                                end: 2025-05-15 15:20:10
+                        description: testscan containing monitors
+                         simulation: False
+                     preferred_axis:
+                  preferred_channel:
+    preferred_normalisation_channel:
+
+    LOG MESSAGES
+
+    DATA
+    Counter (Counter-mot) <AxisData>
+
+    SNAPSHOTS
+
+    MONITORS
+    Status (DetP5000:gw2370700.STAT) <MonitorData>
+    Status (DetbIICurrent:Mnt1topupState.STAT) <MonitorData>
+    range (K0196:gw23728range) <MonitorData>
+    Offset (P5000:gw2370700.AOFF) <MonitorData>
+    Scan (P5000:gw2370700.SCAN) <MonitorData>
+    range (P5000:gw23707range) <MonitorData>
+
+
+As you can see already, although monitors have names, these names are *not unique*. Hence, you can never refer to monitors unequivocally by their (given) name, but only by their ID. This is most probably a design flaw, but that's not our business right now.
+
+Getting a list of all monitor IDs of the given file is as simple as:
+
+
+.. code-block::
+
+    monitor_ids = list(file.monitors.keys())
+
+
+To obtain an individual dataset of monitor data with their timestamps mapped to position counts, use the :meth:`EveFile.get_monitors() <evefile.boundaries.evefile.EveFile.get_monitors>` method:
+
+
+.. code-block::
+
+    device_data = file.get_monitors("DetP5000:gw2370700.STAT")
+
+
+The resulting dataset is of type :class:`DeviceData <evefile.entities.data.DeviceData>` and can be used, *i.a.*, for joining data using the :meth:`EveFile.get_joined_data() <evefile.boundaries.evefile.EveFile.get_joined_data>` method:
+
+
+.. code-block::
+
+    joined_data = file.get_joined_data(([file.get_data("Counter"), monitor])
+
+
+Similarly, you can obtain a dataframe with the monitor included:
+
+
+.. code-block::
+
+    dataframe = file.get_dataframe([file.get_data("Counter"), monitor])
+
