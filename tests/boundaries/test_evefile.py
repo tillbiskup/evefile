@@ -450,3 +450,40 @@ class TestEveFile(unittest.TestCase):
         self.assertIsInstance(device_data, list)
         for item in device_data:
             self.assertIsInstance(item, evefile.entities.data.DeviceData)
+
+    def test_get_snapshots_returns_pandas_dataframe(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(add_snapshot=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        self.assertIsInstance(
+            self.evefile.get_snapshots(),
+            pd.DataFrame,
+        )
+
+    def test_get_snapshots_returns_df_with_snapshot_names_as_index(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(add_snapshot=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        snapshot_df = self.evefile.get_snapshots()
+        snapshot_names = [
+            item.metadata.name for item in self.evefile.snapshots.values()
+        ]
+        self.assertListEqual(snapshot_names, snapshot_df.index.to_list())
+
+    def test_get_snapshots_returns_df_with_poscounts_as_columns(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(add_snapshot=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        snapshot_df = self.evefile.get_snapshots()
+        self.assertListEqual([1, 9], snapshot_df.columns.to_list())
+
+    def test_get_snapshots_returns_df_with_values_as_rows(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(add_snapshot=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        snapshot_df = self.evefile.get_snapshots()
+        snapshot_names = list(self.evefile.snapshots.keys())
+        np.testing.assert_array_equal(
+            self.evefile.snapshots[snapshot_names[0]].data,
+            snapshot_df.iloc[0:].values[0],
+        )

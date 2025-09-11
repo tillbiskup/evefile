@@ -616,3 +616,46 @@ class EveFile(File):
         if len(device_data) == 1:
             device_data = device_data[0]
         return device_data
+
+    def get_snapshots(self):
+        """
+        Retrieve Pandas DataFrame with snapshots as rows.
+
+        Snapshots serve generally two functions:
+
+        #. Provide base values for axes.
+
+           In case of joining data using :meth:`get_joined_data`, for axes,
+           typically the previous values are used for positions no axes
+           values have been recorded. Snapshots are used if available.
+
+        #. Provide telemetry data for the setup the data were recorded with.
+
+           Snapshots regularly contain many more parameters than motor axes
+           used and detector channels recorded. Generally, this provides a
+           lot of telemetry data regarding the setup used for recording the
+           data.
+
+        The first function is served by the :meth:`get_joined_data` method
+        automatically. The second function can be served by having a look at
+        a summary containing all snapshot data. This is the aim of this
+        method: returning a Pandas DataFrame containing all snapshots as
+        rows and the position counts as columns.
+
+
+        Returns
+        -------
+        snapshot_dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing all snapshots as rows.
+
+            The indices (names of the rows) are the names (not IDs) of the
+            respective snapshot datasets.
+
+        """
+        snapshot_dataframes = []
+        for snapshot in self.snapshots.values():
+            data = dict(zip(snapshot.position_counts, snapshot.data))
+            snapshot_dataframes.append(
+                pd.DataFrame(data=data, index=[snapshot.metadata.name])
+            )
+        return pd.concat(snapshot_dataframes)

@@ -1135,7 +1135,7 @@ class AverageChannelData(ChannelData):
         """
         return self.data
 
-    def get_dataframe(self):
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
         """
         Retrieve Pandas DataFrame with data as columns.
 
@@ -1261,7 +1261,7 @@ class IntervalChannelData(ChannelData):
         """
         return self.data
 
-    def get_dataframe(self):
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
         """
         Retrieve Pandas DataFrame with data as columns.
 
@@ -1453,7 +1453,7 @@ class SinglePointNormalizedChannelData(
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
 
-    def get_dataframe(self):
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
         """
         Retrieve Pandas DataFrame with data as columns.
 
@@ -1569,7 +1569,7 @@ class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
 
-    def get_dataframe(self):
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
         """
         Retrieve Pandas DataFrame with data as columns.
 
@@ -1688,7 +1688,7 @@ class IntervalNormalizedChannelData(
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
 
-    def get_dataframe(self):
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
         """
         Retrieve Pandas DataFrame with data as columns.
 
