@@ -146,9 +146,10 @@ import os
 
 import pandas as pd
 
+import evefile.entities.data
 from evefile.entities.file import File
 from evefile.boundaries.eveh5 import HDF5File
-from evefile.controllers import version_mapping, joining
+from evefile.controllers import version_mapping, joining, timestamp_mapping
 
 
 logger = logging.getLogger(__name__)
@@ -221,6 +222,11 @@ class EveFile(File):
         The keys of the dictionary are the (guaranteed to be unique) HDF
         dataset names, not the "given" names usually familiar to the users.
 
+        **Please note:** For monitors, in contrast to data stored in the
+        :attr:`data` attribute, names are *not unique*. Hence, the only way to
+        address an individual monitor unequivocally is by its ID that is
+        identical to the HDF dataset name.
+
         Each item is an instance of
         :class:`evefile.entities.data.MonitorData`.
 
@@ -261,7 +267,8 @@ class EveFile(File):
     def __init__(self, filename="", load=True):
         super().__init__()
         self.filename = filename
-        self._join_factory = joining.JoinFactory(evefile=self)
+        self._join_factory = joining.JoinFactory(file=self)
+        self._monitor_mapper = timestamp_mapping.Mapper(file=self)
         if load:
             if not filename:
                 raise ValueError("No filename given")
@@ -394,7 +401,9 @@ class EveFile(File):
             ]
         return output
 
-    def get_joined_data(self, data=None, mode="AxisOrChannelPositions"):
+    def get_joined_data(
+        self, data=None, mode="AxisOrChannelPositions", include_monitors=False
+    ):
         """
         Retrieve data objects with commensurate dimensions.
 
@@ -420,6 +429,15 @@ class EveFile(File):
 
             Default: "AxisOrChannelPositions"
 
+        include_monitors : :class:`bool`
+            Whether to include (all) monitors in joined data.
+
+            If set to :obj:`True`, all monitors available will automatically
+            be mapped to :obj:`DeviceData <evefile.entities.data.DeviceData>`
+            objects and included in the list of joined data.
+
+            Default: :obj:`False`
+
         Returns
         -------
         data : :class:`list`
@@ -431,10 +449,37 @@ class EveFile(File):
         """
         if not data:
             data = list(self.data.values())
+        data = [
+            (
+                self._convert_str_to_data_object(item)
+                if isinstance(item, str)
+                else item
+            )
+            for item in data
+        ]
+        if include_monitors:
+            monitors = self.get_monitors()
+            if isinstance(monitors, list):
+                data.extend(monitors)
+            else:
+                data.append(monitors)
         joiner = self._join_factory.get_join(mode=mode)
         return joiner.join(data)
 
-    def get_dataframe(self, data=None, mode="AxisOrChannelPositions"):
+    def _convert_str_to_data_object(self, name_or_id=""):
+        try:
+            result = self.data[name_or_id]
+        except KeyError:
+            try:
+                result = self.get_data(name_or_id)
+            except KeyError:
+                # Valid situation: monitor
+                result = self.get_monitors(name_or_id)
+        return result
+
+    def get_dataframe(
+        self, data=None, mode="AxisOrChannelPositions", include_monitors=False
+    ):
         """
         Retrieve Pandas DataFrame with given data objects as columns.
 
@@ -444,6 +489,18 @@ class EveFile(File):
 
         The names of the columns of the returned DataFrame are the names (not
         IDs) of the respective datasets.
+
+        .. note::
+
+            At least for the time being, for each data object involved only
+            the ``data`` attribute will be contained in the returned
+            DataFrame as a column. This is of particular importance for more
+            complicated data types, such as :class:`NormalizedChannelData
+            <evefile.entities.data.NormalizedChannelData>`,
+            :class:`AverageChannelData
+            <evefile.entities.data.AverageChannelData>`,
+            and :class:`IntervalChannelData
+            <evefile.entities.data.IntervalChannelData>`.
 
         .. important::
 
@@ -457,12 +514,12 @@ class EveFile(File):
         Parameters
         ----------
         data : :class:`list`
-            (Names/IDs of) data objects whose data should be joined.
+            (Names/IDs of) data objects whose data should be included.
 
             You can provide either names or IDs or the actual data objects.
 
             If no data are given, by default all data available will be
-            joined.
+            included.
 
             Default: :obj:`None`
 
@@ -472,6 +529,19 @@ class EveFile(File):
             <evefile.controllers.joining.JoinFactory>`.
 
             Default: "AxisOrChannelPositions"
+
+        include_monitors : :class:`bool`
+            Whether to include (all) monitors in the dataframe.
+
+            If set to :obj:`True`, all monitors available will automatically
+            be mapped to :obj:`DeviceData <evefile.entities.data.DeviceData>`
+            objects and included in the dataframe.
+
+            Note that for mapped monitors, their IDs are used as column
+            names rather than the "given" names, as for monitors, names are
+            *not unique*.
+
+            Default: :obj:`False`
 
         Returns
         -------
@@ -484,10 +554,17 @@ class EveFile(File):
         """
         if not data:
             data = list(self.data.values())
-        joined_data = self.get_joined_data(data=data, mode=mode)
+        joined_data = self.get_joined_data(
+            data=data, mode=mode, include_monitors=include_monitors
+        )
+        for item in joined_data:
+            # Ensure IDs are used for monitors, as names are not unique
+            if isinstance(item, evefile.entities.data.DeviceData):
+                item.metadata.name = item.metadata.id
         dataframe = pd.DataFrame(
             {item.metadata.name: item.data for item in joined_data}
         )
+        dataframe.index = joined_data[0].position_counts
         dataframe.index.name = "position"
         return dataframe
 
@@ -552,3 +629,93 @@ class EveFile(File):
         print("\nMONITORS")
         for item in self.monitors.values():
             print(item)
+
+    def get_monitors(self, monitors=None):
+        """
+        Retrieve monitors as mapped device data objects by ID.
+
+        While you can get the original monitor data objects by accessing the
+        :attr:`monitors <evefile.entities.file.File.monitors>` attribute
+        directly, there, they are stored as
+        :obj:`MonitorData <evefile.entities.data.MonitorData>` objects with
+        timestamps instead of position counts. To relate monitors to the
+        measured data, the former need to be mapped to position counts.
+
+        .. note::
+
+            Monitors, in contrast to data objects stored in the
+            :attr:`data <evefile.entities.file.File.data>` attribute,
+            have *no unique names*. Hence, the only way to unequivocally
+            access a given monitor (or the respective, mapped
+            :obj:`DeviceData <evefile.entities.data.DeviceData>` object) is
+            by means of its unique ID.
+
+
+        Parameters
+        ----------
+        monitors : :class:`str` | :class:`list`
+            Name or list of names of monitors to retrieve
+
+        Returns
+        -------
+        device_data : :class:`evefile.entities.data.Data` | :class:`list`
+            Device data object(s) corresponding to the ID(s).
+
+            In case of a list of data objects, each object is of type
+            :class:`evefile.entities.data.DeviceData`.
+
+        """
+        device_data = []
+        if not monitors:
+            monitors = list(self.monitors)
+        if isinstance(monitors, (list, tuple)):
+            for item in monitors:
+                device_data.append(self._monitor_mapper.map(item))
+        else:
+            device_data.append(self._monitor_mapper.map(monitors))
+        if len(device_data) == 1:
+            device_data = device_data[0]
+        return device_data
+
+    def get_snapshots(self):
+        """
+        Retrieve Pandas DataFrame with snapshots as rows.
+
+        Snapshots serve generally two functions:
+
+        #. Provide base values for axes.
+
+           In case of joining data using :meth:`get_joined_data`, for axes,
+           typically the previous values are used for positions no axes
+           values have been recorded. Snapshots are used if available.
+
+        #. Provide telemetry data for the setup the data were recorded with.
+
+           Snapshots regularly contain many more parameters than motor axes
+           used and detector channels recorded. Generally, this provides a
+           lot of telemetry data regarding the setup used for recording the
+           data.
+
+        The first function is served by the :meth:`get_joined_data` method
+        automatically. The second function can be served by having a look at
+        a summary containing all snapshot data. This is the aim of this
+        method: returning a Pandas DataFrame containing all snapshots as
+        rows and the position counts as columns.
+
+
+        Returns
+        -------
+        snapshot_dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing all snapshots as rows.
+
+            The indices (names of the rows) are the names (not IDs) of the
+            respective snapshot datasets.
+
+        """
+        snapshot_dataframes = []
+        for snapshot in self.snapshots.values():
+            data = dict(zip(snapshot.position_counts, snapshot.data))
+            snapshot_dataframes.append(
+                pd.DataFrame(data=data, index=[snapshot.metadata.name])
+            )
+        return pd.concat(snapshot_dataframes)

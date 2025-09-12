@@ -562,7 +562,7 @@ class MeasureData(Data):
         """
         Retrieve Pandas DataFrame with data as column.
 
-        The index is named "positions" and contains the values of the
+        The index is named "position" and contains the values of the
         :attr:`position_counts` attribute of the data object.
 
         .. important::
@@ -701,6 +701,47 @@ class DeviceData(MeasureData):
         super().__init__()
         self.metadata = metadata.DeviceMetadata()
 
+    def join(self, positions=None):
+        """
+        Perform a left join of the data on the provided list of positions.
+
+        The main "quantisation" axis of the values for a device and the
+        common reference is the list of positions. To sensibly compare the
+        data of different devices or plot different device data against each
+        other, the data need to be harmonised, *i.e.* share a common set of
+        positions as indices.
+
+        If positions are not present in the original data, the previous
+        value present is automatically taken for this position. This is a
+        valid assumption, as the underlying EPICS monitors only record a
+        new value if the actual value has changed.
+
+        .. note::
+
+            The method will *alter* the data and positions of the underlying
+            :obj:`DeviceData` object. Hence, make sure to make a copy if
+            this is not your intended use case.
+
+
+        Parameters
+        ----------
+        positions : :class:`numpy.ndarray`
+            Array with positions the data should be mapped to.
+
+        Raises
+        ------
+        ValueError
+            Raised if no positions are provided
+
+        """
+        if positions is None:
+            raise ValueError("No positions provided")
+        new_positions = (
+            np.searchsorted(self.position_counts, positions, side="right") - 1
+        )
+        self.position_counts = positions
+        self.data = self.data[new_positions]
+
 
 class AxisData(MeasureData):
     """
@@ -787,6 +828,10 @@ class AxisData(MeasureData):
         contain values that are *not* floating point numbers. For a more
         detailed discussion, see the :mod:`evefile.controllers.joining`
         module.
+
+        If a snapshot preceding a non-existing position is available,
+        the value from this snapshot is automatically taken for the given
+        position.
 
         .. note::
 
@@ -1090,6 +1135,35 @@ class AverageChannelData(ChannelData):
         """
         return self.data
 
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains two columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * attempts
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
+
 
 class IntervalChannelData(ChannelData):
     """
@@ -1186,6 +1260,36 @@ class IntervalChannelData(ChannelData):
 
         """
         return self.data
+
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains three columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * counts
+        * std
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
 
 
 class NormalizedChannelData:
@@ -1349,6 +1453,36 @@ class SinglePointNormalizedChannelData(
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
 
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains three columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * normalized_data
+        * normalizing_data
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
+
 
 class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     """
@@ -1434,6 +1568,37 @@ class AverageNormalizedChannelData(AverageChannelData, NormalizedChannelData):
     @normalizing_data.setter
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
+
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains four columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * attempts
+        * normalized_data
+        * normalizing_data
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
 
 
 class IntervalNormalizedChannelData(
@@ -1522,6 +1687,38 @@ class IntervalNormalizedChannelData(
     @normalizing_data.setter
     def normalizing_data(self, normalizing_data=None):
         self._normalizing_data = normalizing_data
+
+    def get_dataframe(self):  # pylint: disable=useless-parent-delegation
+        """
+        Retrieve Pandas DataFrame with data as columns.
+
+        The DataFrame contains five columns, each corresponding to the
+        respective attribute of the class:
+
+        * data
+        * counts
+        * std
+        * normalized_data
+        * normalizing_data
+
+        The index is named "position" and contains the values of the
+        :attr:`position_counts` attribute of the data object.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as columns.
+
+        """
+        return super().get_dataframe()
 
 
 class DataImporter:
