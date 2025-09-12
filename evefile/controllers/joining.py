@@ -132,7 +132,7 @@ Monitors have not changed by definition
 ---------------------------------------
 
 A monitor is by definition a device you are observing for changes in its
-values. Hence, if no chance has been recorded (*i.e.*, no newer value is
+values. Hence, if no change has been recorded (*i.e.*, no newer value is
 present), the value hasn't changed. Therefore, monitor data can be
 "filled" with the last known value, and in contrast to axes, we can be
 certain that this is true. (For an axis, you could always argue that if
@@ -330,26 +330,20 @@ final joined data array previously determined for all the other datasets
 (that in turn depend on the join mode, of course).
 
 
-A few comments for further development
-======================================
+How to deal with additional attributes?
+=======================================
 
-.. important::
+Joining should take into account all available attributes, not only
+``data``, but options as well if present. This of course only applies to
+``evefile`` if options of devices are mapped to the respective data
+objects.
 
-    The classes implemented in this module have been copied from the
-    corresponding module in `evedata`_, and here particularly from the
-    "measurement" functional layer. However, the needs in ``evefile`` are
-    different, hence even the basic :class:`Join` class needs to be
-    redesigned. Further information below. Once this has been done,
-    this entire section should be removed.
-
-
-* Joining should probably take into account all available attributes,
-  not only ``data``, but options as well if present. This of course only
-  applies to ``evefile`` if options of devices are mapped to the
-  respective data objects.
-
-* Joining should probably take into account monitors that need to be
-  converted to :class:`DeviceData <evefile.entities.data.DeviceData>` before.
+A similar case already implemented: More advanced channels such as average
+and interval channels that come with additional data per each recorded
+value (see :class:`AverageChannelData
+<evefile.entities.data.AverageChannelData>` and
+:class:`IntervalChannelData <evefile.entities.data.IntervalChannelData>`
+for details) have these attributes handled accordingly.
 
 
 Join modes currently implemented
@@ -536,7 +530,7 @@ class Join:
         self._channel_indices = []
         self._axes = []
         self._channels = []
-        self._monitors = []
+        self._devices = []
         self._result_positions = None
         self.evefile = evefile
 
@@ -600,7 +594,7 @@ class Join:
         self._assign_result_positions()
         self._fill_axes()
         self._fill_channels()
-        self._fill_monitors()
+        self._fill_devices()
         return self._assign_result()
 
     def _sort_data(self, data):
@@ -611,7 +605,7 @@ class Join:
             if isinstance(item, evefile.entities.data.AxisData):
                 self._axes.append(copy.copy(item))
             if isinstance(item, evefile.entities.data.DeviceData):
-                self._monitors.append(copy.copy(item))
+                self._devices.append(copy.copy(item))
 
     def _assign_result_positions(self):
         pass
@@ -630,15 +624,15 @@ class Join:
         for channel in self._channels:
             channel.join(positions=self._result_positions)
 
-    def _fill_monitors(self):
-        for monitor in self._monitors:
-            monitor.join(positions=self._result_positions)
+    def _fill_devices(self):
+        for device in self._devices:
+            device.join(positions=self._result_positions)
 
     def _assign_result(self):
         result = [*self._axes]
         for idx, item in enumerate(self._channels):
             result.insert(self._channel_indices[idx], item)
-        result.extend(self._monitors)
+        result.extend(self._devices)
         return result
 
 
