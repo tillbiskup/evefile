@@ -146,6 +146,7 @@ import os
 
 import pandas as pd
 
+import evefile.entities.data
 from evefile.entities.file import File
 from evefile.boundaries.eveh5 import HDF5File
 from evefile.controllers import version_mapping, joining, timestamp_mapping
@@ -400,7 +401,9 @@ class EveFile(File):
             ]
         return output
 
-    def get_joined_data(self, data=None, mode="AxisOrChannelPositions"):
+    def get_joined_data(
+        self, data=None, mode="AxisOrChannelPositions", include_monitors=False
+    ):
         """
         Retrieve data objects with commensurate dimensions.
 
@@ -426,6 +429,15 @@ class EveFile(File):
 
             Default: "AxisOrChannelPositions"
 
+        include_monitors : :class:`bool`
+            Whether to include (all) monitors in joined data.
+
+            If set to :obj:`True`, all monitors available will automatically
+            be mapped to :obj:`DeviceData <evefile.entities.data.DeviceData>`
+            objects and included in the list of joined data.
+
+            Default: :obj:`False`
+
         Returns
         -------
         data : :class:`list`
@@ -437,10 +449,37 @@ class EveFile(File):
         """
         if not data:
             data = list(self.data.values())
+        data = [
+            (
+                self._convert_str_to_data_object(item)
+                if isinstance(item, str)
+                else item
+            )
+            for item in data
+        ]
+        if include_monitors:
+            monitors = self.get_monitors()
+            if isinstance(monitors, list):
+                data.extend(monitors)
+            else:
+                data.append(monitors)
         joiner = self._join_factory.get_join(mode=mode)
         return joiner.join(data)
 
-    def get_dataframe(self, data=None, mode="AxisOrChannelPositions"):
+    def _convert_str_to_data_object(self, name_or_id=""):
+        try:
+            result = self.data[name_or_id]
+        except KeyError:
+            try:
+                result = self.get_data(name_or_id)
+            except KeyError:
+                # Valid situation: monitor
+                result = self.get_monitors(name_or_id)
+        return result
+
+    def get_dataframe(
+        self, data=None, mode="AxisOrChannelPositions", include_monitors=False
+    ):
         """
         Retrieve Pandas DataFrame with given data objects as columns.
 
@@ -475,12 +514,12 @@ class EveFile(File):
         Parameters
         ----------
         data : :class:`list`
-            (Names/IDs of) data objects whose data should be joined.
+            (Names/IDs of) data objects whose data should be included.
 
             You can provide either names or IDs or the actual data objects.
 
             If no data are given, by default all data available will be
-            joined.
+            included.
 
             Default: :obj:`None`
 
@@ -490,6 +529,19 @@ class EveFile(File):
             <evefile.controllers.joining.JoinFactory>`.
 
             Default: "AxisOrChannelPositions"
+
+        include_monitors : :class:`bool`
+            Whether to include (all) monitors in the dataframe.
+
+            If set to :obj:`True`, all monitors available will automatically
+            be mapped to :obj:`DeviceData <evefile.entities.data.DeviceData>`
+            objects and included in the dataframe.
+
+            Note that for mapped monitors, their IDs are used as column
+            names rather than the "given" names, as for monitors, names are
+            *not unique*.
+
+            Default: :obj:`False`
 
         Returns
         -------
@@ -502,7 +554,13 @@ class EveFile(File):
         """
         if not data:
             data = list(self.data.values())
-        joined_data = self.get_joined_data(data=data, mode=mode)
+        joined_data = self.get_joined_data(
+            data=data, mode=mode, include_monitors=include_monitors
+        )
+        for item in joined_data:
+            # Ensure IDs are used for monitors, as names are not unique
+            if isinstance(item, evefile.entities.data.DeviceData):
+                item.metadata.name = item.metadata.id
         dataframe = pd.DataFrame(
             {item.metadata.name: item.data for item in joined_data}
         )
@@ -600,14 +658,15 @@ class EveFile(File):
 
         Returns
         -------
-        device_data : :class:`evefile.entities.data.DeviceData` | :class:`list`
+        device_data : :class:`list`
             DeviceData object(s) corresponding to the ID(s).
 
-            In case of a list of device data objects, each object is of type
-            :class:`evefile.entities.data.DeviceData`.
+            Each object is of type :class:`evefile.entities.data.DeviceData`.
 
         """
         device_data = []
+        if not monitors:
+            monitors = list(self.monitors)
         if isinstance(monitors, (list, tuple)):
             for item in monitors:
                 device_data.append(self._monitor_mapper.map(item))

@@ -498,7 +498,7 @@ class Join:
 
     Attributes
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the Join should be performed for.
 
         Although joining is carried out for a small subset of the
@@ -538,7 +538,7 @@ class Join:
         self._channels = []
         self._devices = []
         self._result_positions = None
-        self.evefile = file
+        self.file = file
 
     def join(self, data=None):
         """
@@ -574,26 +574,11 @@ class Join:
             Raised if no data are provided
 
         """
-        if not self.evefile:
+        if not self.file:
             raise ValueError("Need an evefile to join data.")
         if not data:
             raise ValueError("Need data to join data.")
-        data = [
-            (
-                self._convert_str_to_data_object(item)
-                if isinstance(item, str)
-                else item
-            )
-            for item in data
-        ]
         return self._join(data=data)
-
-    def _convert_str_to_data_object(self, name_or_id=""):
-        try:
-            result = self.evefile.data[name_or_id]
-        except KeyError:
-            result = self.evefile.get_data(name_or_id)
-        return result
 
     def _join(self, data=None):
         self._sort_data(data)
@@ -618,10 +603,10 @@ class Join:
 
     def _fill_axes(self):
         for axis in self._axes:
-            if axis.metadata.id in self.evefile.snapshots:
+            if axis.metadata.id in self.file.snapshots:
                 axis.join(
                     positions=self._result_positions,
-                    snapshot=self.evefile.snapshots[axis.metadata.id],
+                    snapshot=self.file.snapshots[axis.metadata.id],
                 )
             else:
                 axis.join(positions=self._result_positions, fill=True)
@@ -690,7 +675,7 @@ class ChannelPositions(Join):
 
     Attributes
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the join should be performed for.
 
         Although joining may only be carried out for a small subset of the
@@ -782,7 +767,7 @@ class AxisPositions(Join):
 
     Attributes
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the join should be performed for.
 
         Although joining may only be carried out for a small subset of the
@@ -877,7 +862,7 @@ class AxisAndChannelPositions(Join):
 
     Attributes
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the join should be performed for.
 
         Although joining may only be carried out for a small subset of the
@@ -974,7 +959,7 @@ class AxisOrChannelPositions(Join):
 
     Attributes
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the join should be performed for.
 
         Although joining may only be carried out for a small subset of the

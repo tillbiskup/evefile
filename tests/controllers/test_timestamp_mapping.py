@@ -40,7 +40,7 @@ class TestMapper(unittest.TestCase):
 
     def test_has_attributes(self):
         attributes = [
-            "evefile",
+            "file",
         ]
         for attribute in attributes:
             with self.subTest(attribute=attribute):
@@ -49,61 +49,61 @@ class TestMapper(unittest.TestCase):
     def test_initialise_with_evefile_sets_evefile(self):
         evefile = self.evefile
         mapper = timestamp_mapping.Mapper(file=evefile)
-        self.assertEqual(evefile, mapper.evefile)
+        self.assertEqual(evefile, mapper.file)
 
     def test_map_without_evefile_raises(self):
-        self.mapper.evefile = None
+        self.mapper.file = None
         with self.assertRaisesRegex(
             ValueError, "Need an evefile to map data."
         ):
             self.mapper.map()
 
     def test_map_without_data_raises(self):
-        self.mapper.evefile = self.evefile
+        self.mapper.file = self.evefile
         with self.assertRaisesRegex(
             ValueError, "Need monitor to map " "timestamps to positions."
         ):
             self.mapper.map()
 
     def test_map_returns_device_data(self):
-        self.mapper.evefile = self.evefile
+        self.mapper.file = self.evefile
         mapped_data = self.mapper.map(self.monitor_name)
         self.assertIsInstance(mapped_data, evefile.entities.data.DeviceData)
 
     def test_returned_device_data_contain_correct_metadata(self):
-        self.mapper.evefile = self.evefile
+        self.mapper.file = self.evefile
         mapped_data = self.mapper.map(self.monitor_name)
         self.assertEqual(
-            self.mapper.evefile.monitors[self.monitor_name].metadata.name,
+            self.mapper.file.monitors[self.monitor_name].metadata.name,
             mapped_data.metadata.name,
         )
 
     def test_returned_device_data_contain_positions(self):
-        self.mapper.evefile = self.evefile
+        self.mapper.file = self.evefile
         mapped_data = self.mapper.map(self.monitor_name)
         self.assertTrue(all(mapped_data.position_counts > 0))
         self.assertTrue(all(mapped_data.position_counts < 11))
 
     def test_returned_device_data_contain_data(self):
-        self.mapper.evefile = self.evefile
+        self.mapper.file = self.evefile
         mapped_data = self.mapper.map(self.monitor_name)
         np.testing.assert_array_equal(
             mapped_data.data,
-            self.mapper.evefile.monitors[self.monitor_name].data[1:],
+            self.mapper.file.monitors[self.monitor_name].data[1:],
         )
 
     def test_returned_device_data_contain_copy_of_data(self):
-        self.mapper.evefile = self.evefile
+        self.mapper.file = self.evefile
         mapped_data = self.mapper.map(self.monitor_name)
         self.assertIsNot(
             mapped_data.data,
-            self.mapper.evefile.monitors[self.monitor_name].data,
+            self.mapper.file.monitors[self.monitor_name].data,
         )
 
     def test_returned_device_data_contain_last_of_duplicate_times(self):
-        self.mapper.evefile = self.evefile
+        self.mapper.file = self.evefile
         mapped_data = self.mapper.map(self.monitor_name)
         self.assertEqual(
-            self.mapper.evefile.monitors[self.monitor_name].data[1],
+            self.mapper.file.monitors[self.monitor_name].data[1],
             mapped_data.data[0],
         )

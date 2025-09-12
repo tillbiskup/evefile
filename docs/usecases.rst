@@ -556,7 +556,7 @@ To obtain an individual dataset of monitor data with their timestamps mapped to 
 
 .. code-block::
 
-    device_data = file.get_monitors("DetP5000:gw2370700.STAT")
+    device_data = file.get_monitors(monitors="DetP5000:gw2370700.STAT")
 
 
 The resulting dataset is of type :class:`DeviceData <evefile.entities.data.DeviceData>` and can be used, *i.a.*, for joining data using the :meth:`EveFile.get_joined_data() <evefile.boundaries.evefile.EveFile.get_joined_data>` method:
@@ -564,13 +564,63 @@ The resulting dataset is of type :class:`DeviceData <evefile.entities.data.Devic
 
 .. code-block::
 
-    joined_data = file.get_joined_data(([file.get_data("Counter"), monitor])
+    joined_data = file.get_joined_data(data=[file.get_data("Counter"), device_data])
 
 
-Similarly, you can obtain a dataframe with the monitor included:
+Note that you are free to mix data names or IDs, monitor IDs, and actual datasets in the list provided as parameter ``data``. However, for monitors, only IDs or actual datasets are allowed, as for monitors, the (given) names are *not unique*.
+
+In analogy, you can obtain a dataframe with the monitor included:
 
 
 .. code-block::
 
-    dataframe = file.get_dataframe([file.get_data("Counter"), monitor])
+    dataframe = file.get_dataframe(data=[file.get_data("Counter"), device_data])
+
+
+The same is true for this method: you are free to mix data names or IDs, monitor IDs, and actual datasets in the list provided as parameter ``data``. Again, for monitors, only IDs or actual datasets are allowed, as their (given) names are *not unique*.
+
+Similar to the :meth:`EveFile.get_data() <evefile.boundaries.evefile.EveFile.get_data>` method, if you do not provide a parameter ``monitors``, all available monitor datasets will be mapped and the corresponding :obj:`DeviceData <evefile.entities.data.DeviceData>` objects returned as a :obj:`list`:
+
+
+.. code-block::
+
+    all_device_data = file.get_monitors()
+
+
+With regard to the :meth:`EveFile.get_joined_data() <evefile.boundaries.evefile.EveFile.get_joined_data>` and :meth:`EveFile.get_dataframe() <evefile.boundaries.evefile.EveFile.get_dataframe>` methods, you can automatically include all monitors as well, using the optional parameter ``include_monitors``. In this case, the monitor datasets will first be mapped to :obj:`DeviceData <evefile.entities.data.DeviceData>` objects, joined and included in the dataframe:
+
+
+.. code-block::
+
+    all_joined_data = file.get_joined_data(include_monitors=True)
+
+
+This will return a list of joined data, including all data and all mapped monitors. Similarly, for the "all-knowing dataframe" (beware of the many limits of the dataframe approach discussed above):
+
+
+.. code-block::
+
+    all_knowing_dataframe = file.get_dataframe(include_monitors=True)
+
+
+The resulting :class:`pandas.DataFrame` can be output directly in the Python console, just calling the variable ``all_knowing_dataframe``. The result may look similar to the following:
+
+.. code-block::
+
+              Counter DetP5000:gw2370700.STAT DetbIICurrent:Mnt1topupState.STAT  ... P5000:gw2370700.AOFF  P5000:gw2370700.SCAN P5000:gw23707range
+    position                                                                     ...
+    1               1                 b'HIHI'                       b'NO_ALARM'  ...                  0.0           b'5 second'      b'20 -> V kO'
+    2               2                 b'HIHI'                       b'NO_ALARM'  ...                  0.0           b'5 second'      b'20 -> V kO'
+    3               3                 b'HIHI'                       b'NO_ALARM'  ...                  0.0           b'5 second'      b'20 -> V kO'
+    4               4                 b'HIHI'                       b'NO_ALARM'  ...                  0.0           b'5 second'      b'20 -> V kO'
+    5               5                 b'HIHI'                       b'NO_ALARM'  ...                  0.0           b'5 second'      b'20 -> V kO'
+    ...           ...                     ...                               ...  ...                  ...                   ...                ...
+    116           116                 b'HIHI'                       b'NO_ALARM'  ...                  2.0           b'5 second'      b'20 -> V kO'
+    117           117                 b'HIHI'                       b'NO_ALARM'  ...                  2.0           b'5 second'      b'20 -> V kO'
+    118           118                 b'HIHI'                       b'NO_ALARM'  ...                  2.0           b'5 second'      b'20 -> V kO'
+    119           119                 b'HIHI'                       b'NO_ALARM'  ...                  2.0           b'5 second'      b'20 -> V kO'
+    120           120                 b'HIHI'                       b'NO_ALARM'  ...                  2.0           b'5 second'      b'20 -> V kO'
+
+
+As you see here, the first column is a "motor axis", hence with the (given) name as column header, while for the monitors (all the other columns), the IDs are used as column headers. This is, as mentioned, due to the fact that the (given) names of the monitors are *not unique* (and in the given example, you would end up with two columns labelled "Status" and two columns labelled "range", not knowing what device they belong to).
 

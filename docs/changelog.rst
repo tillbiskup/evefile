@@ -16,9 +16,10 @@ Not yet released
 New features
 ------------
 
-* :meth:`evefile.entities.data.Data.get_monitors` to get a (list of) monitor(s) converted into datasets with timestamps mapped to position counts.
-* :meth:`evefile.entities.data.Data.get_snapshots` to get an overview of all snapshots as a single Pandas DataFrame.
-* Joining takes monitors into account if provided.
+* :meth:`evefile.boundaries.evefile.EveFile.get_monitors` to get a (list of) monitor(s) converted into datasets with timestamps mapped to position counts.
+* :meth:`evefile.boundaries.evefile.EveFile.get_snapshots` to get an overview of all snapshots as a single Pandas DataFrame.
+* Joining takes (mapped) monitors into account if provided.
+* New parameter ``include_monitors`` in :meth:`evefile.boundaries.evefile.EveFile.get_joined_data` and :meth:`evefile.boundaries.evefile.EveFile.get_dataframe` to include all (mapped) monitor datasets.
 
 
 Version 0.1.0-rc.2

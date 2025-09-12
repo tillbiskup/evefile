@@ -86,7 +86,7 @@ class Mapper:
 
     Attributes
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the mapping should be performed for.
 
         Although mapping is carried out for individual monitors contained in
@@ -122,7 +122,7 @@ class Mapper:
     """
 
     def __init__(self, file=None):
-        self.evefile = file
+        self.file = file
 
     def map(self, monitor=None):
         """
@@ -160,11 +160,11 @@ class Mapper:
             Raised if no monitor is provided
 
         """
-        if not self.evefile:
+        if not self.file:
             raise ValueError("Need an evefile to map data.")
         if not monitor:
             raise ValueError("Need monitor to map timestamps to positions.")
-        monitor_data = self.evefile.monitors[monitor]
+        monitor_data = self.file.monitors[monitor]
         # Need to force load data before mapping
         monitor_data.get_data()
         device_data = evefile.entities.data.DeviceData()
@@ -179,7 +179,7 @@ class Mapper:
             )
         )
         device_data.position_counts = (
-            self.evefile.position_timestamps.get_position(
+            self.file.position_timestamps.get_position(
                 monitor_data.milliseconds[indices]
             )
         )

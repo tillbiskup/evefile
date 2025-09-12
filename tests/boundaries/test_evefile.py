@@ -311,6 +311,47 @@ class TestEveFile(unittest.TestCase):
         for item in result:
             self.assertEqual(len(positions), len(item.position_counts))
 
+    def test_get_joined_data_with_ids(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        ids = list(self.evefile.data)
+        result = self.evefile.get_joined_data(data=ids)
+        for item in result:
+            self.assertIsInstance(item, evefile.entities.data.MeasureData)
+
+    def test_get_joined_data_with_names(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        names = [item.metadata.name for item in self.evefile.data.values()]
+        result = self.evefile.get_joined_data(data=names)
+        for item in result:
+            self.assertIsInstance(item, evefile.entities.data.MeasureData)
+
+    def test_get_joined_data_with_monitor_ids(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        ids = list(self.evefile.data)
+        ids.extend(list(self.evefile.monitors))
+        result = self.evefile.get_joined_data(data=ids)
+        self.assertEqual(3, len(result))
+        for item in result:
+            self.assertIsInstance(item, evefile.entities.data.MeasureData)
+
+    def test_get_joined_data_with_monitors_true_includes_monitor_objects(
+        self,
+    ):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        result = self.evefile.get_joined_data(include_monitors=True)
+        self.assertTrue(result)
+        self.assertEqual(
+            len(self.evefile.data) + len(self.evefile.monitors), len(result)
+        )
+
     def test_show_info_prints_metadata(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
@@ -431,6 +472,20 @@ class TestEveFile(unittest.TestCase):
         )
         self.assertEqual(len(positions), len(dataframe.index))
 
+    def test_dataframe_with_monitors_true_includes_monitor_objects(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        dataframe = self.evefile.get_dataframe(include_monitors=True)
+        column_names = [
+            item.metadata.name for item in self.evefile.data.values()
+        ]
+        column_names.extend(list(self.evefile.monitors))
+        self.assertListEqual(
+            list(dataframe.columns),
+            column_names,
+        )
+
     def test_get_monitor_returns_device_data(self):
         h5file = DummyHDF5File(filename=self.filename)
         h5file.create()
@@ -450,6 +505,19 @@ class TestEveFile(unittest.TestCase):
         self.assertIsInstance(device_data, list)
         for item in device_data:
             self.assertIsInstance(item, evefile.entities.data.DeviceData)
+
+    def test_get_monitors_by_default_returns_all_mapped_monitors(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        self.evefile = evefile.EveFile(filename=self.filename)
+        result = self.evefile.get_monitors()
+        self.assertTrue(result)
+        if len(self.evefile.monitors) > 2:
+            self.assertEqual(len(self.evefile.monitors), len(result))
+            for item in result:
+                self.assertIsInstance(item, evefile.entities.data.DeviceData)
+        else:
+            self.assertIsInstance(result, evefile.entities.data.DeviceData)
 
     def test_get_snapshots_returns_pandas_dataframe(self):
         h5file = DummyHDF5File(filename=self.filename)
