@@ -20,7 +20,7 @@ class MockMonitor(evefile.entities.data.MonitorData):
 
 
 class MockEveFile:
-    def __init__(self, snapshots=False):
+    def __init__(self):
         self.monitors = {
             "SimMonitor:01.STAT": MockMonitor(name="Status"),
         }
@@ -47,9 +47,9 @@ class TestMapper(unittest.TestCase):
                 self.assertTrue(hasattr(self.mapper, attribute))
 
     def test_initialise_with_evefile_sets_evefile(self):
-        evefile = self.evefile
-        mapper = timestamp_mapping.Mapper(file=evefile)
-        self.assertEqual(evefile, mapper.file)
+        file = self.evefile
+        mapper = timestamp_mapping.Mapper(file=file)
+        self.assertEqual(file, mapper.file)
 
     def test_map_without_evefile_raises(self):
         self.mapper.file = None

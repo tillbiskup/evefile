@@ -92,9 +92,9 @@ class TestJoin(unittest.TestCase):
                 self.assertTrue(hasattr(self.join, attribute))
 
     def test_initialise_with_evefile_sets_evefile(self):
-        evefile = self.evefile
-        join = joining.Join(file=evefile)
-        self.assertEqual(evefile, join.file)
+        file = self.evefile
+        join = joining.Join(file=file)
+        self.assertEqual(file, join.file)
 
     def test_join_without_evefile_raises(self):
         self.join.file = None
@@ -498,9 +498,9 @@ class TestJoinFactory(unittest.TestCase):
         )
 
     def test_initialise_with_evefile_sets_evefile(self):
-        evefile = "foo"
-        factory = joining.JoinFactory(file=evefile)
-        self.assertEqual(evefile, factory.file)
+        file = "foo"
+        factory = joining.JoinFactory(file=file)
+        self.assertEqual(file, factory.file)
 
     def test_get_join_with_evefile_sets_evefile(self):
         self.factory.file = "foo"
