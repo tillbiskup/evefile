@@ -658,10 +658,11 @@ class EveFile(File):
 
         Returns
         -------
-        device_data : :class:`list`
-            DeviceData object(s) corresponding to the ID(s).
+        device_data : :class:`evefile.entities.data.Data` | :class:`list`
+            Device data object(s) corresponding to the ID(s).
 
-            Each object is of type :class:`evefile.entities.data.DeviceData`.
+            In case of a list of data objects, each object is of type
+            :class:`evefile.entities.data.DeviceData`.
 
         """
         device_data = []
