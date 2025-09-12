@@ -93,7 +93,7 @@ class TestJoin(unittest.TestCase):
 
     def test_initialise_with_evefile_sets_evefile(self):
         evefile = self.evefile
-        join = joining.Join(evefile=evefile)
+        join = joining.Join(file=evefile)
         self.assertEqual(evefile, join.evefile)
 
     def test_join_without_evefile_raises(self):
@@ -401,7 +401,6 @@ class TestChannelPositions(unittest.TestCase):
         self.assertEqual(len(result), 3)
         for item in result:
             self.assertIsInstance(item, evefile.entities.data.MeasureData)
-        print(result)
         np.testing.assert_array_equal(
             result[0].position_counts, result[-1].position_counts
         )
@@ -536,10 +535,10 @@ class TestJoinFactory(unittest.TestCase):
 
     def test_initialise_with_evefile_sets_evefile(self):
         evefile = "foo"
-        factory = joining.JoinFactory(evefile=evefile)
-        self.assertEqual(evefile, factory.evefile)
+        factory = joining.JoinFactory(file=evefile)
+        self.assertEqual(evefile, factory.file)
 
     def test_get_join_with_evefile_sets_evefile(self):
-        self.factory.evefile = "foo"
+        self.factory.file = "foo"
         join = self.factory.get_join()
-        self.assertEqual(self.factory.evefile, join.evefile)
+        self.assertEqual(self.factory.file, join.evefile)

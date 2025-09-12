@@ -266,8 +266,8 @@ class EveFile(File):
     def __init__(self, filename="", load=True):
         super().__init__()
         self.filename = filename
-        self._join_factory = joining.JoinFactory(evefile=self)
-        self._monitor_mapper = timestamp_mapping.Mapper(evefile=self)
+        self._join_factory = joining.JoinFactory(file=self)
+        self._monitor_mapper = timestamp_mapping.Mapper(file=self)
         if load:
             if not filename:
                 raise ValueError("No filename given")

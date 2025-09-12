@@ -165,8 +165,12 @@ NoFill
     have values."
 
     Actually, not a filling, but mathematically an intersection, or,
-    in terms of relational databases, an ``SQL INNER JOIN``. In any case,
-    data are *reduced*.
+    in terms of relational databases, an ``SQL INNER JOIN``. Note, however,
+    that in contrast to the usual terminology of relational databases,
+    no individual "tables" (*i.e.*, datasets) are joined, but only the
+    set unions of channel and axes positions, respectively. In any case,
+    data are *reduced*. Nevertheless, you will most probably end up with
+    ``NaN`` or otherwise missing values. See below for details.
 
 LastFill
     "Use all channel data and fill in the last known position for all axes
@@ -220,7 +224,9 @@ main/standard section yet.
 .. note::
 
     Note that **none of the fill modes guarantees that there are no NaNs**
-    (or comparable null values) in the resulting data.
+    (or comparable null values) in the resulting data. The reason: Not
+    individual axes or channel datasets are joined, but always the set union
+    of all axes positions and all channel positions, respectively.
 
 
 .. note::
@@ -501,7 +507,7 @@ class Join:
 
     Parameters
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the join should be performed for.
 
 
@@ -516,7 +522,7 @@ class Join:
 
     .. code-block::
 
-        join = Join(evefile=my_evefile)
+        join = Join(file=my_evefile)
         # Call with data object names
         joined_data = join.join(["name1", "name2"])
         # Call with data objects
@@ -526,13 +532,13 @@ class Join:
 
     """
 
-    def __init__(self, evefile=None):
+    def __init__(self, file=None):
         self._channel_indices = []
         self._axes = []
         self._channels = []
         self._devices = []
         self._result_positions = None
-        self.evefile = evefile
+        self.evefile = file
 
     def join(self, data=None):
         """
@@ -694,7 +700,7 @@ class ChannelPositions(Join):
 
     Parameters
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile the join should be performed for.
 
 
@@ -709,7 +715,7 @@ class ChannelPositions(Join):
 
     .. code-block::
 
-        join = ChannelPositions(evefile=my_evefile)
+        join = ChannelPositions(file=my_evefile)
         # Call with data object names
         joined_data = join.join(["name1", "name2"])
         # Call with data objects
@@ -786,7 +792,7 @@ class AxisPositions(Join):
 
     Parameters
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile the join should be performed for.
 
 
@@ -801,7 +807,7 @@ class AxisPositions(Join):
 
     .. code-block::
 
-        join = AxisPositions(evefile=my_evefile)
+        join = AxisPositions(file=my_evefile)
         # Call with data object names
         joined_data = join.join(["name1", "name2"])
         # Call with data objects
@@ -881,7 +887,7 @@ class AxisAndChannelPositions(Join):
 
     Parameters
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile the join should be performed for.
 
 
@@ -896,7 +902,7 @@ class AxisAndChannelPositions(Join):
 
     .. code-block::
 
-        join = AxisAndChannelPositions(evefile=my_evefile)
+        join = AxisAndChannelPositions(file=my_evefile)
         # Call with data object names
         joined_data = join.join(["name1", "name2"])
         # Call with data objects
@@ -978,7 +984,7 @@ class AxisOrChannelPositions(Join):
 
     Parameters
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile the join should be performed for.
 
 
@@ -993,7 +999,7 @@ class AxisOrChannelPositions(Join):
 
     .. code-block::
 
-        join = AxisOrChannelPositions(evefile=my_evefile)
+        join = AxisOrChannelPositions(file=my_evefile)
         # Call with data object names
         joined_data = join.join(["name1", "name2"])
         # Call with data objects
@@ -1030,13 +1036,13 @@ class JoinFactory:
 
     Attributes
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile the join should be performed for.
 
 
     Parameters
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile the join should be performed for.
 
 
@@ -1069,8 +1075,8 @@ class JoinFactory:
 
     """
 
-    def __init__(self, evefile=None):
-        self.evefile = evefile
+    def __init__(self, file=None):
+        self.file = file
 
     def get_join(self, mode="Join"):
         """
@@ -1096,5 +1102,5 @@ class JoinFactory:
             Join instance
 
         """
-        instance = globals()[mode](evefile=self.evefile)
+        instance = globals()[mode](file=self.file)
         return instance

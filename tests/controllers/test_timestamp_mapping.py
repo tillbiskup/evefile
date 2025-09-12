@@ -48,7 +48,7 @@ class TestMapper(unittest.TestCase):
 
     def test_initialise_with_evefile_sets_evefile(self):
         evefile = self.evefile
-        mapper = timestamp_mapping.Mapper(evefile=evefile)
+        mapper = timestamp_mapping.Mapper(file=evefile)
         self.assertEqual(evefile, mapper.evefile)
 
     def test_map_without_evefile_raises(self):

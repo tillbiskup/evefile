@@ -95,7 +95,7 @@ class Mapper:
 
     Parameters
     ----------
-    evefile : :class:`evefile.boundaries.evefile.EveFile`
+    file : :class:`evefile.boundaries.evefile.EveFile`
         EveFile object the mapping should be performed for.
 
 
@@ -112,7 +112,7 @@ class Mapper:
 
     .. code-block::
 
-        mapper = Mapper(evefile=evefile)
+        mapper = Mapper(file=evefile)
         device_data = mapper.map("DetP5000:gw2370700.STAT")
 
     This will return a device dataset in the variable ``device_data`` with
@@ -121,8 +121,8 @@ class Mapper:
 
     """
 
-    def __init__(self, evefile=None):
-        self.evefile = evefile
+    def __init__(self, file=None):
+        self.evefile = file
 
     def map(self, monitor=None):
         """
