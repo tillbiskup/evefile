@@ -8,7 +8,7 @@ This page contains a summary of changes between the official evefile releases. O
 Version 0.1.0
 =============
 
-Not yet released
+Released 2025-09-12
 
 * First public release
 
