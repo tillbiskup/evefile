@@ -188,6 +188,9 @@ Module documentation
 import datetime
 import logging
 import sys
+from collections.abc import Iterable
+
+import numpy as np
 
 from evefile import entities
 
@@ -532,6 +535,7 @@ class VersionMapper:
         #       mapped dataset is removed from this list.
         self._map_timestamp_dataset()
         self._map_monitor_datasets()
+        self._map_array_datasets()
         self._map_axis_datasets()
         self._map_0d_datasets()
         self._map_snapshot_datasets()
@@ -558,6 +562,26 @@ class VersionMapper:
             self.destination.monitors[self.get_dataset_name(monitor)] = (
                 dataset
             )
+
+    def _map_array_datasets(self):
+        mapped_datasets = []
+        for name in self.datasets2map_in_main:
+            item = getattr(self._main_group, name)
+            # noinspection PyUnresolvedReferences
+            if isinstance(item, Iterable) and "DeviceType" in item.attributes:
+                # noinspection PyTypeChecker
+                # TODO: Distinguish between MCA and other array detectors
+                self._map_mca_dataset(hdf5_group=item)
+                # noinspection PyTypeChecker
+                mapped_datasets.append(self.get_dataset_name(item))
+        for item in mapped_datasets:
+            self.datasets2map_in_main.remove(item)
+
+    def _map_array_dataset(self, hdf5_group=None):
+        pass
+
+    def _map_mca_dataset(self, hdf5_group=None):
+        pass
 
     def _map_axis_datasets(self):
         mapped_datasets = []
@@ -756,6 +780,137 @@ class VersionMapperV5(VersionMapper):
         dataset.importer.append(importer)
         dataset.metadata.unit = timestampdata.attributes["Unit"]
         self.destination.position_timestamps = dataset
+
+    def _map_mca_dataset(self, hdf5_group=None):
+        # TODO: Move up to VersionMapperV2 (at least the earliest one)
+        dataset = entities.data.MCAChannelData()
+        self.set_basic_metadata(hdf5_item=hdf5_group, dataset=dataset)
+        self._mca_dataset_set_data(dataset=dataset, hdf5_group=hdf5_group)
+        self._mca_dataset_set_options_in_main(dataset=dataset)
+        self._mca_dataset_set_options_in_snapshot(dataset=dataset)
+        self.destination.data[self.get_dataset_name(hdf5_group)] = dataset
+
+    def _mca_dataset_set_data(self, dataset=None, hdf5_group=None):
+        # Create positions vector and add it (needs to be done here)
+        positions = [int(i) for i in hdf5_group.item_names()]
+        dataset.position_counts = np.asarray(positions, dtype="i4")
+        # Create and add importers for each individual array
+        for position in hdf5_group:
+            importer_mapping = {
+                0: "data",
+            }
+            importer = self.get_hdf5_dataset_importer(
+                dataset=position, mapping=importer_mapping
+            )
+            dataset.importer.append(importer)
+
+    def _mca_dataset_set_options_in_main(self, dataset=None):
+        # Handle options in main section
+        pv_base = dataset.metadata.pv.split(".")[0]
+        options_in_main = [
+            item
+            for item in self.datasets2map_in_main
+            if item.startswith(f"{pv_base}.")
+        ]
+        options_in_main.sort()
+        for option in options_in_main:
+            mapping_table = {
+                "ELTM": "life_time",
+                "ERTM": "real_time",
+                "PLTM": "preset_life_time",
+                "PRTM": "preset_real_time",
+            }
+            attribute = option.split(".")[-1]
+            if attribute in mapping_table:
+                importer_mapping = {1: mapping_table[attribute]}
+                importer = self.get_hdf5_dataset_importer(
+                    dataset=getattr(self.source.c1.main, option),
+                    mapping=importer_mapping,
+                )
+                dataset.importer.append(importer)
+                self.datasets2map_in_main.remove(option)
+            if attribute.startswith("R"):
+                roi = entities.data.MCAChannelROIData()
+                importer_mapping = {
+                    0: "position_counts",
+                    1: "data",
+                }
+                importer = self.get_hdf5_dataset_importer(
+                    dataset=getattr(self.source.c1.main, option),
+                    mapping=importer_mapping,
+                )
+                roi.importer.append(importer)
+                dataset.roi.append(roi)
+                self.datasets2map_in_main.remove(option)
+
+    def _mca_dataset_set_options_in_snapshot(self, dataset):
+        # Handle options in snapshot section
+        pv_base = dataset.metadata.pv.split(".")[0]
+        options_in_snapshot = [
+            item
+            for item in self.datasets2map_in_snapshot
+            if item.startswith(f"{pv_base}.")
+        ]
+        options_in_snapshot.sort()
+        calibration_options = [
+            item.split(".")[-1]
+            for item in options_in_snapshot
+            if item.split(".")[-1].startswith("CAL")
+        ]
+        if calibration_options:
+            mapping_table = {
+                "CALO": "offset",
+                "CALQ": "quadratic",
+                "CALS": "slope",
+            }
+            calibration = entities.metadata.MCAChannelCalibration()
+            for option in calibration_options:
+                # HDF5 datasets are read directly and only the first data
+                # point taken from each, as calibration cannot sensibly
+                # change between scan modules of a scan.
+                name = ".".join([pv_base, option])
+                hdf5_dataset = getattr(self.source.c1.snapshot, name)
+                hdf5_dataset.get_data()
+                setattr(
+                    calibration,
+                    mapping_table[option],
+                    hdf5_dataset.data[name][0],
+                )
+                options_in_snapshot.remove(name)
+                self.datasets2map_in_snapshot.remove(name)
+            dataset.metadata.calibration = calibration
+        roi_options = [
+            item.split(".")[-1]
+            for item in options_in_snapshot
+            if item.split(".")[-1].startswith("R")
+        ]
+        if roi_options:
+            n_rois = len(set(int(item[1:-2]) for item in roi_options))
+            for idx in range(n_rois):
+                if len(dataset.roi) < idx:
+                    roi = entities.data.MCAChannelROIData()
+                    dataset.roi.append(roi)
+                else:
+                    roi = dataset.roi[idx]
+                name = ".".join([pv_base, f"R{idx}LO"])
+                hdf5_dataset = getattr(self.source.c1.snapshot, name)
+                hdf5_dataset.get_data()
+                roi.marker[0] = hdf5_dataset.data[name][0]
+                name = ".".join([pv_base, f"R{idx}HI"])
+                hdf5_dataset = getattr(self.source.c1.snapshot, name)
+                hdf5_dataset.get_data()
+                roi.marker[1] = hdf5_dataset.data[name][0]
+                name = ".".join([pv_base, f"R{idx}NM"])
+                hdf5_dataset = getattr(self.source.c1.snapshot, name)
+                hdf5_dataset.get_data()
+                roi.label = hdf5_dataset.data[name][0].decode()
+            for option in roi_options:
+                name = ".".join([pv_base, option])
+                options_in_snapshot.remove(name)
+                self.datasets2map_in_snapshot.remove(name)
+        for option in options_in_snapshot:
+            logger.warning("Option %s unmapped", option.split(".")[-1])
+            self.datasets2map_in_snapshot.remove(option)
 
     def _map_log_messages(self):
         if not hasattr(self.source, "LiveComment"):

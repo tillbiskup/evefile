@@ -127,6 +127,104 @@ class MockEveH5v4(MockEveH5):
         )
 
     # noinspection PyUnresolvedReferences
+    def add_array_channel(self):
+        # Fake array channel
+        self.c1.main.add_item(
+            MockHDF5Group(name="/c1/main/array", filename=self.filename)
+        )
+        self.c1.main.array.attributes = {
+            "DeviceType": "Channel",
+            "DetectorType": "Standard",
+            "Access": "ca:array.VAL",
+            "Name": "bsdd6_spectrum",
+            "XML-ID": "BRQM1:mca08chan1",
+        }
+        for position in range(5, 20):
+            self.c1.main.array.add_item(
+                MockHDF5Dataset(
+                    name=f"/c1/main/array/{position}", filename=self.filename
+                )
+            )
+            getattr(self.c1.main.array, str(position)).dtype = np.dtype(
+                [("0", "<i4")]
+            )
+        for option in ["ELTM", "ERTM", "PLTM", "PRTM", "R0", "R1"]:
+            dataset = MockHDF5Dataset(
+                name=f"/c1/main/array.{option}", filename=self.filename
+            )
+            dataset.attributes = {
+                "DeviceType": "Channel",
+                "Access": f"ca:array.{option}",
+            }
+            self.c1.main.add_item(dataset)
+        for option in [
+            "CALO",
+            "CALQ",
+            "CALS",
+        ]:
+            dataset = MockHDF5Dataset(
+                name=f"/c1/snapshot/array.{option}", filename=self.filename
+            )
+            dataset.attributes = {
+                "DeviceType": "Channel",
+                "Access": f"ca:array.{option}",
+            }
+            data_ = np.ndarray(
+                [2],
+                dtype=np.dtype(
+                    [("PosCounter", "<i4"), (f"array.{option}", "f8")]
+                ),
+            )
+            data_["PosCounter"] = np.asarray([2, 5])
+            data_[f"array.{option}"] = np.random.random(2)
+            dataset.data = data_
+            self.c1.snapshot.add_item(dataset)
+        for option in [
+            "R0LO",
+            "R0HI",
+            "R1LO",
+            "R1HI",
+        ]:
+            dataset = MockHDF5Dataset(
+                name=f"/c1/snapshot/array.{option}", filename=self.filename
+            )
+            dataset.attributes = {
+                "DeviceType": "Channel",
+                "Access": f"ca:array.{option}",
+            }
+            data_ = np.ndarray(
+                [2],
+                dtype=np.dtype(
+                    [("PosCounter", "<i4"), (f"array.{option}", "<i4")]
+                ),
+            )
+            data_["PosCounter"] = np.asarray([2, 5])
+            data_[f"array.{option}"] = [-1, -1]
+            dataset.data = data_
+            self.c1.snapshot.add_item(dataset)
+        for option in [
+            "R0NM",
+            "R1NM",
+        ]:
+            dataset = MockHDF5Dataset(
+                name=f"/c1/snapshot/array.{option}", filename=self.filename
+            )
+            dataset.attributes = {
+                "DeviceType": "Channel",
+                "Access": f"ca:array.{option}",
+            }
+            data_ = np.ndarray(
+                [2],
+                dtype=np.dtype(
+                    [("PosCounter", "<i4"), (f"array.{option}", "S3")]
+                ),
+            )
+            data_["PosCounter"] = np.asarray([2, 5])
+            data_[f"array.{option}"] = ["foo", "foo"]
+            dataset.data = data_
+            self.c1.snapshot.add_item(dataset)
+
+    # noinspection PyUnresolvedReferences
     def add_singlepoint_detector_data(self, normalized=False):
         names = [
             "A2980:gw24103chan1",
@@ -918,6 +1016,166 @@ class TestVersionMapperV5(unittest.TestCase):
             mapping_dict,
             self.destination.position_timestamps.importer[0].mapping,
         )
+
+    # noinspection PyUnresolvedReferences
+    def test_map_adds_array_dataset(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        self.assertIsInstance(
+            self.destination_data("array"),
+            evefile.entities.data.ArrayChannelData,
+        )
+        self.assertEqual(
+            "array",
+            self.destination_data("array").metadata.id,
+        )
+        self.assertEqual(
+            self.source.c1.main.array.attributes["Name"],
+            self.destination_data("array").metadata.name,
+        )
+        self.assertEqual(
+            self.source.c1.main.array.attributes["Access"].split(
+                ":", maxsplit=1
+            )[1],
+            self.destination_data("array").metadata.pv,
+        )
+        self.assertEqual(
+            self.source.c1.main.array.attributes["Access"].split(
+                ":", maxsplit=1
+            )[0],
+            self.destination_data("array").metadata.access_mode,
+        )
+        positions = [int(i) for i in self.source.c1.main.array.item_names()]
+        self.assertListEqual(
+            positions, list(self.destination_data("array").position_counts)
+        )
+        for idx, pos in enumerate(self.source.c1.main.array.item_names()):
+            self.assertEqual(
+                f"/c1/main/array/{pos}",
+                self.destination_data("array").importer[idx].item,
+            )
+
+    # noinspection PyUnresolvedReferences
+    def test_map_array_dataset_removes_dataset_from_list2map(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        self.assertNotIn("array", self.mapper.datasets2map_in_main)
+
+    # noinspection PyUnresolvedReferences
+    def test_map_array_dataset_adds_importers_for_options(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        offset = 15
+        pv_attributes = ["ELTM", "ERTM", "PLTM", "PRTM"]
+        for idx, option in enumerate(pv_attributes):
+            self.assertEqual(
+                f"/c1/main/array.{option}",
+                self.destination_data("array").importer[idx + offset].item,
+            )
+        attribute_names = [
+            "life_time",
+            "real_time",
+            "preset_life_time",
+            "preset_real_time",
+        ]
+        for idx, attribute in enumerate(attribute_names):
+            self.assertEqual(
+                attribute,
+                self.destination_data("array")
+                .importer[idx + offset]
+                .mapping[f"array.{pv_attributes[idx]}"],
+            )
+
+    def test_map_array_adds_mca_roi_objects(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        # Assuming two ROI datasets to be added
+        self.assertEqual(2, len(self.destination_data("array").roi))
+
+    def test_map_array_adds_importers_to_mca_roi_objects(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        for roi in self.destination_data("array").roi:
+            self.assertTrue(roi.importer)
+
+    def test_map_array_set_mca_roi_marker(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        for roi in self.destination_data("array").roi:
+            self.assertListEqual([-1, -1], list(roi.marker))
+
+    def test_map_array_set_mca_roi_label(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        for roi in self.destination_data("array").roi:
+            self.assertEqual("foo", roi.label)
+
+    def test_map_array_dataset_calibration_has_correct_values(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        mapping_table = {
+            "CALO": "offset",
+            "CALQ": "quadratic",
+            "CALS": "slope",
+        }
+        for key, value in mapping_table.items():
+            # noinspection PyUnresolvedReferences
+            self.assertEqual(
+                getattr(self.mapper.source.c1.snapshot, f"array.{key}").data[
+                    f"array.{key}"
+                ][0],
+                getattr(
+                    self.destination_data("array").metadata.calibration, value
+                ),
+            )
+
+    def test_map_mca_dataset_with_unknown_options_logs_warning(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        option = "UNKNOWN"
+        dataset = MockHDF5Dataset(
+            name=f"/c1/snapshot/array.{option}",
+            filename=self.mapper.source.filename,
+        )
+        dataset.attributes = {
+            "DeviceType": "Channel",
+            "Access": f"ca:array.{option}",
+        }
+        # noinspection PyUnresolvedReferences
+        self.mapper.source.c1.snapshot.add_item(dataset)
+        self.logger.setLevel(logging.WARN)
+        with self.assertLogs(level=logging.WARN) as captured:
+            self.mapper.map(destination=self.destination)
+        self.assertEqual(len(captured.records), 1)
+        self.assertEqual(
+            captured.records[0].getMessage(), f"Option {option} " f"unmapped"
+        )
+
+    # noinspection PyUnresolvedReferences
+    def test_map_array_dataset_removes_options_from_list2map(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        array_datasets_in_main = [
+            item
+            for item in self.mapper.datasets2map_in_main
+            if item.startswith("array")
+        ]
+        self.assertFalse(array_datasets_in_main)
+        array_datasets_in_snapshot = [
+            item
+            for item in self.mapper.datasets2map_in_snapshot
+            if item.startswith("array")
+        ]
+        self.assertFalse(array_datasets_in_snapshot)
 
     def test_map_adds_axis_datasets(self):
         self.mapper.source = self.source
