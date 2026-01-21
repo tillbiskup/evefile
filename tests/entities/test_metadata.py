@@ -560,3 +560,82 @@ class TestIntervalNormalizedChannelMetadata(unittest.TestCase):
         ]
         for attribute in attributes:
             self.assertIn(attribute, output)
+
+
+class TestArrayChannelMetadata(unittest.TestCase):
+    def setUp(self):
+        self.metadata = metadata.ArrayChannelMetadata()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "name",
+            "options",
+            "unit",
+            "id",
+            "pv",
+            "access_mode",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.metadata, attribute))
+
+
+class TestMCAChannelMetadata(unittest.TestCase):
+    def setUp(self):
+        self.metadata = metadata.MCAChannelMetadata()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "name",
+            "options",
+            "unit",
+            "id",
+            "pv",
+            "access_mode",
+            "calibration",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.metadata, attribute))
+
+
+class TestMCAChannelCalibration(unittest.TestCase):
+    def setUp(self):
+        self.calibration = metadata.MCAChannelCalibration()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "offset",
+            "slope",
+            "quadratic",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.calibration, attribute))
+
+    def test_calibrate_returns_array(self):
+        calibrated_values = self.calibration.calibrate(n_channels=4096)
+        self.assertIsInstance(calibrated_values, numpy.ndarray)
+
+    def test_calibrate_returns_correct_calibration(self):
+        n_channels = 4096
+        self.calibration.offset = 12.0
+        self.calibration.slope = 2.0
+        self.calibration.quadratic = 1.2
+        channels = np.arange(n_channels)
+        expected_values = (
+            self.calibration.offset
+            + channels * self.calibration.slope
+            + channels**2 * self.calibration.quadratic
+        )
+        calibrated_values = self.calibration.calibrate(n_channels=n_channels)
+        np.testing.assert_array_equal(expected_values, calibrated_values)

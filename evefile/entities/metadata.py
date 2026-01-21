@@ -77,6 +77,8 @@ Module documentation
 import copy
 import logging
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 
@@ -590,3 +592,141 @@ class IntervalNormalizedChannelMetadata(
     def __init__(self):
         super().__init__()
         self._attributes.extend(["normalize_id"])
+
+
+class ArrayChannelMetadata(ChannelMetadata):
+    """
+    Metadata for channels with numeric 1D data.
+
+    This class complements the class
+    :class:`evedata.evefile.entities.data.ArrayChannelData`.
+
+
+    Examples
+    --------
+    The :class:`ArrayChannelMetadata` class is not meant to be used
+    directly, as any entities, but rather indirectly by means of the
+    respective facades in the boundaries technical layer of the
+    :mod:`evedata.evefile` subpackage. Hence, for the time being,
+    there are no dedicated examples how to use this class. Of course,
+    you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+
+class MCAChannelMetadata(ArrayChannelMetadata):
+    """
+    Metadata for multichannel analyzer (MCA) channels.
+
+    This class complements the class
+    :class:`evedata.evefile.entities.data.MCAChannelData`.
+
+
+    Attributes
+    ----------
+    calibration : :class:`MCAChannelCalibration`
+        Metadata for the calibration of the MCA channel.
+
+
+    Examples
+    --------
+    The :class:`MCAChannelMetadata` class is not meant
+    to be used directly, as any entities, but rather indirectly by means
+    of the respective facades in the boundaries technical layer of the
+    :mod:`evedata.evefile` subpackage. Hence, for the time being,
+    there are no dedicated examples how to use this class. Of course,
+    you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.calibration = MCAChannelCalibration()
+
+
+class MCAChannelCalibration:
+    """
+    Metadata for MCA channel calibration.
+
+    Many MCA channels need to be calibrated (with a second-order
+    polynomial) to convert the channel numbers to actual energies.
+
+    From the `EPICS MCA Record description
+    <https://millenia.cars.aps.anl.gov/software/epics/mcaRecord.html>`_:
+    "The relationship between calibrated units (cal) and channel number
+    (chan) is defined as ``cal=CALO + chan*CALS + chan^2*CALQ``. The first
+    channel in the spectrum is defined as chan=0." Here, ``CALO`` is the
+    offset, ``CALS`` the slope, and ``CALQ`` the quadratic term of the
+    polynomial.
+
+    Attributes
+    ----------
+    offset : :class:`float`
+        Calibration offset, *i.e.* 0th order coefficient of the polynomial.
+
+    slope : :class:`float`
+        Calibration slope, *i.e.* 1st order coefficient of the polynomial.
+
+    quadratic : :class:`float`
+        2nd order coefficient of the polynomial.
+
+
+    Examples
+    --------
+    To calibrate your MCA with a number of channels with the given
+    calibration parameters (offset, slope, quadratic term), use:
+
+    .. code-block::
+
+        calibration = MCAChannelCalibration()
+        # Set the calibration parameters
+        calibrated_values = calibration.calibrate(n_channels=4096)
+
+    The :obj:`MCAChannelData <evedata.evefile.entities.data.MCAChannelData>`
+    object will usually perform the calibration transparently for you if
+    necessary. Even better, this object knows how many channels the MCA has.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        self.offset = 0.0
+        self.slope = 1.0
+        self.quadratic = 0.0
+
+    def calibrate(self, n_channels=0):
+        """
+        Return calibrated values for given number of channels.
+
+        From the `EPICS MCA Record description
+        <https://millenia.cars.aps.anl.gov/software/epics/mcaRecord.html>`_:
+        "The relationship between calibrated units (cal) and channel number
+        (chan) is defined as ``cal=CALO + chan*CALS + chan^2*CALQ``. The first
+        channel in the spectrum is defined as chan=0." Here, ``CALO`` is the
+        offset, ``CALS`` the slope, and ``CALQ`` the quadratic term of the
+        polynomial.
+
+        Parameters
+        ----------
+        n_channels : :class:`int`
+            Number of channels of the MCA
+
+        Returns
+        -------
+        calibrated_values : :class:`numpy.ndarray`
+            Calibrated values for the given number of channels.
+
+        """
+        channels = np.arange(n_channels)
+        calibrated_values = (
+            self.offset + channels * self.slope + channels**2 * self.quadratic
+        )
+        return calibrated_values

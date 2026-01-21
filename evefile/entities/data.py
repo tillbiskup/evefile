@@ -392,6 +392,100 @@ class Data:
         return dataframe
 
 
+class Axis:
+    """Axis for data.
+
+    An axis contains always both, numerical values and the metadata
+    necessary to create axis labels and to make sense of the numerical
+    information.
+
+    Attributes
+    ----------
+    quantity : :class:`str`
+        quantity of the numerical data, usually used as first part of an
+        automatically generated axis label
+
+    unit : :class:`str`
+        unit of the numerical data, usually used as second part of an
+        automatically generated axis label
+
+    symbol : :class:`str`
+        symbol for the quantity of the numerical data, usually used as first
+        part of an automatically generated axis label
+
+    label : :class:`str`
+        manual label for the axis, particularly useful in cases where no
+        quantity and unit are provided or should be overwritten.
+
+
+    .. note::
+        There are three alternative ways of writing axis labels, one with
+        using the quantity name and the unit, one with using the quantity
+        symbol and the unit, and one using both, quantity name and symbol,
+        usually separated by comma. Quantity and unit shall always be
+        separated by a slash. Which way you prefer is a matter of personal
+        taste and given context.
+
+
+    Raises
+    ------
+    ValueError
+        Raised when trying to set axis values to another type than numpy array
+    IndexError
+        Raised when trying to set axis values to an array with more than one
+        dimension.
+        Raised if index does not have the same length as values.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._values = np.zeros(0)
+        self.quantity = ""
+        self.symbol = ""
+        self.unit = ""
+        self.label = ""
+
+    @property
+    def values(self):
+        """
+        Get or set the numerical axis values.
+
+        Values require to be a one-dimensional numpy array. Trying to set
+        values to either a different type that cannot be converted to a
+        numpy array or a numpy array with more than one dimension will raise
+        a corresponding error.
+
+        Raises
+        ------
+        ValueError
+            Raised if axis values are of wrong type
+        IndexError
+            Raised if axis values are of wrong dimension, i.e. not a vector
+
+        """
+        return self._values
+
+    @values.setter
+    def values(self, values):
+        if not isinstance(values, type(self._values)):
+            values = np.asarray(values)
+            if (
+                not isinstance(values, type(self._values))
+                or values.dtype != self._values.dtype
+            ):
+                raise ValueError(
+                    f"Wrong type: expected {self._values.dtype}, "
+                    f"got {values.dtype}"
+                )
+        if values.ndim > 1:
+            raise IndexError("Values need to be one-dimensional")
+        self._values = values
+
+
 class MonitorData(Data):
     """
     Data from devices monitored, but not controlled by the eve engine.
@@ -1719,6 +1813,211 @@ class IntervalNormalizedChannelData(
 
         """
         return super().get_dataframe()
+
+
+class ArrayChannelData(ChannelData):
+    """
+    Data for channels with numeric 1D data.
+
+    Detector channels can be distinguished by the dimension of their data:
+
+    0D
+        scalar values per position, including average and interval channels
+    1D
+        array values, *i.e.* vectors, per position
+    2D
+        area values, *i.e.* images, per position
+
+    This class represents 1D array values.
+
+
+    Attributes
+    ----------
+    metadata : :class:`evedata.evefile.entities.metadata.ArrayChannelMetadata`
+        Relevant metadata for the individual device.
+
+
+    Examples
+    --------
+    The :class:`ArrayChannelData` class is not meant to be used
+    directly, as any entities, but rather indirectly by means of the
+    respective facades in the boundaries technical layer of the
+    :mod:`evedata.evefile` subpackage.
+    Hence, for the time being, there are no dedicated examples how to use
+    this class. Of course, you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.metadata = metadata.ArrayChannelMetadata()
+
+    def get_data(self):
+        """
+        Load data (and variable option data) using the respective importer.
+
+        Data are loaded only on demand. Hence, upon the first access of the
+        :attr:`data` property, this method will be called, calling out to
+        the respective importers.
+
+        As :obj:`Data` objects may contain (variable) options that are
+        themselves data, but loading these data is only triggered when
+        accessing the :attr:`data` property, you can either once access the
+        :attr:`data` property or call this method.
+
+        Data may be spread over several HDF5 datasets, depending on the
+        version of the eveH5 file read. Hence, there may be several
+        importers, and they are dealt with sequentially.
+
+        Furthermore, for each importer type, there is a special private
+        method ``_import_from_<importer-type>``, with ``<importer-type>``
+        being the lowercase class name. Those classes using additional
+        importers beyond :class:`HDF5DataImporter` need to implement
+        additional private methods to handle the special importer classes. A
+        typical use case is the :class:`AreaChannelData` class dealing with
+        image data stored mostly in separate files.
+
+        .. todo::
+            * Decide whether all data need to be ordered according to their
+              first axis (monitor data and measure data), and if only the
+              latter, implement the sorting in the :meth:`MeasureData.get_data`
+              method. Otherwise, implement it here.
+            * Make this method version-aware, *i.e.* handle situation with
+              new eveH5 v8 schema where data are stored as single dataset
+              in HDF5, no longer as separate datasets. Should be rather
+              easy, as this would mean only one importer with "data" as
+              value?
+
+        """
+        for idx, importer in enumerate(self.importer):
+            importer.load()
+            if "data" in importer.mapping.values():
+                data = importer.data["0"]
+                if self._data is None:
+                    self._data = np.ndarray(
+                        [len(data), len(self.importer)], dtype=data.dtype
+                    )
+                self._data[:, idx] = importer.data["0"]
+
+
+class MCAChannelData(ArrayChannelData):
+    """
+    Data for multichannel analyzer (MCA) channels.
+
+    MCA channel data are usually 1D data, *i.e.* arrays or vectors.
+
+
+    Attributes
+    ----------
+    metadata : :class:`evedata.evefile.entities.metadata.MCAChannelMetadata`
+        Relevant metadata for the individual device.
+
+    roi : :class:`list`
+        List of data for the individual ROIs defined.
+
+        Individual items in the list are objects of class
+        :class:`MCAChannelROIData`.
+
+    life_time : :class:`numpy.ndarray`
+        Elapsed life time
+
+        After a read status operation, this field contains the elapsed
+        live time, as reported by the hardware.
+
+    real_time : :class:`numpy.ndarray`
+        Elapsed real time
+
+        After a read status operation, this field contains the elapsed
+        real time, as reported by the hardware.
+
+    preset_life_time : :class:`numpy.ndarray`
+        Preset life time
+
+        For how many seconds to acquire data, according to a clock which
+        counts only when the hardware is ready to accept data (live time).
+
+    preset_real_time : :class:`numpy.ndarray`
+        Preset real time
+
+        For how many seconds to acquire data, according to a free running
+        clock (real time)
+
+    axis : :class:`Axis`
+        Data and metadata for the x-axis of the array data
+
+        MCAs record array data, and to make sense of the indices of the
+        arrays, usually some calibration parameters are recorded that can
+        be used to convert the indices of the array to an actual axis - be
+        it energy or time or else.
+
+        See :class:`evefile.entities.metadata.MCAChannelCalibration` for
+        details of the calibration data that may be available for your MCA.
+
+
+    Examples
+    --------
+    The :class:`MCAChannelData` class is not meant to be used
+    directly, as any entities, but rather indirectly by means of the
+    respective facades in the boundaries technical layer of the
+    :mod:`evedata.evefile` subpackage.
+    Hence, for the time being, there are no dedicated examples how to use
+    this class. Of course, you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.metadata = metadata.MCAChannelMetadata()
+        self.roi = []
+        self.life_time = np.ndarray(shape=[])
+        self.real_time = np.ndarray(shape=[])
+        self.preset_life_time = np.ndarray(shape=[])
+        self.preset_real_time = np.ndarray(shape=[])
+        self.axis = Axis()
+
+
+class MCAChannelROIData(MeasureData):
+    """
+    Data for an individual ROI of an MCA detector channel.
+
+    Many MCAs allow to define one or several regions of interest (ROI).
+    This class contains the relevant data for an individual ROI.
+
+
+    Attributes
+    ----------
+    label : :class:`str`
+        Label for the ROI provided by the operator.
+
+    marker : :class:`numpy.ndarray`
+        Two-element vector of integer values containing the left and right
+        boundary of the ROI.
+
+
+    Examples
+    --------
+    The :class:`MCAChannelROIData` class is not meant to be used
+    directly, as any entities, but rather indirectly by means of the
+    respective facades in the boundaries technical layer of the
+    :mod:`evedata.evefile` subpackage.
+    Hence, for the time being, there are no dedicated examples how to use
+    this class. Of course, you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.label = ""
+        self.marker = np.asarray([0, 0], dtype=int)
 
 
 class DataImporter:

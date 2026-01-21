@@ -60,6 +60,16 @@ class DummyHDF5File:
             poscounttimer = meta.create_dataset("PosCountTimer", data=data_)
             poscounttimer.attrs["Unit"] = np.bytes_(["msecs"])
 
+    def add_array_data(self):
+        with h5py.File(self.filename, "r+") as file:
+            file["c1"]["main"].create_group("array")
+            for position in range(5, 20):
+                data_ = np.ndarray([4096], dtype=np.dtype([("0", "<i4")]))
+                data_["0"] = np.random.randint(low=0, high=1024, size=4096)
+                file["c1"]["main"]["array"].create_dataset(
+                    str(position), data=data_
+                )
+
 
 class TestData(unittest.TestCase):
     def setUp(self):
@@ -242,6 +252,45 @@ class TestData(unittest.TestCase):
         self.data.importer.append(importer)
         dataframe = self.data.get_dataframe()
         self.assertTrue(dataframe.size)
+
+
+class TestAxis(unittest.TestCase):
+    def setUp(self):
+        self.axis = data.Axis()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "quantity",
+            "unit",
+            "symbol",
+            "label",
+            "values",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.axis, attribute))
+
+    def test_values_is_ndarray(self):
+        self.assertTrue(isinstance(self.axis.values, np.ndarray))
+
+    def test_values_is_1d(self):
+        self.assertTrue(self.axis.values.ndim, 1)
+
+    def test_set_values(self):
+        self.axis.values = np.zeros(0)
+
+    def test_set_wrong_type_for_values_fails(self):
+        with self.assertRaisesRegex(ValueError, "Wrong type: expected"):
+            self.axis.values = "foo"
+
+    def test_set_multidimensional_values_fails(self):
+        with self.assertRaisesRegex(
+            IndexError, "Values need to be " "one-dimensional"
+        ):
+            self.axis.values = np.zeros([0, 0])
 
 
 class TestMonitorData(unittest.TestCase):
@@ -1315,6 +1364,101 @@ class TestIntervalNormalizedChannelData(unittest.TestCase):
     ):
         _ = self.mock_data.normalizing_data
         self.assertTrue(self.mock_data.get_data_called)
+
+
+class TestArrayChannelData(unittest.TestCase):
+    def setUp(self):
+        self.data = data.ArrayChannelData()
+        self.filename = "test.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "metadata",
+            "options",
+            "data",
+            "position_counts",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.data, attribute))
+
+    def test_metadata_are_of_corresponding_type(self):
+        self.assertIsInstance(
+            self.data.metadata, metadata.ArrayChannelMetadata
+        )
+
+    def test_get_data_loads_data(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                "0": "data",
+            }
+            self.data.importer.append(importer)
+        self.data.get_data()
+        self.assertEqual(2, self.data.data.ndim)
+
+
+class TestMCAChannelData(unittest.TestCase):
+    def setUp(self):
+        self.data = data.MCAChannelData()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "metadata",
+            "options",
+            "data",
+            "position_counts",
+            "roi",
+            "life_time",
+            "real_time",
+            "preset_life_time",
+            "preset_real_time",
+            "axis",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.data, attribute))
+
+    def test_metadata_are_of_corresponding_type(self):
+        self.assertIsInstance(self.data.metadata, metadata.MCAChannelMetadata)
+
+    def test_axis_is_of_corresponding_type(self):
+        self.assertIsInstance(self.data.axis, data.Axis)
+
+
+class TestMCAChannelROIData(unittest.TestCase):
+    def setUp(self):
+        self.data = data.MCAChannelROIData()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "metadata",
+            "options",
+            "data",
+            "position_counts",
+            "label",
+            "marker",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.data, attribute))
 
 
 class TestDataImporter(unittest.TestCase):
