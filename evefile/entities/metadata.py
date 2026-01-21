@@ -607,7 +607,7 @@ class ArrayChannelMetadata(ChannelMetadata):
     The :class:`ArrayChannelMetadata` class is not meant to be used
     directly, as any entities, but rather indirectly by means of the
     respective facades in the boundaries technical layer of the
-    :mod:`evedata.evefile` subpackage. Hence, for the time being,
+    ``evefile`` package. Hence, for the time being,
     there are no dedicated examples how to use this class. Of course,
     you can instantiate an object as usual.
 
@@ -636,7 +636,7 @@ class MCAChannelMetadata(ArrayChannelMetadata):
     The :class:`MCAChannelMetadata` class is not meant
     to be used directly, as any entities, but rather indirectly by means
     of the respective facades in the boundaries technical layer of the
-    :mod:`evedata.evefile` subpackage. Hence, for the time being,
+    ``evefile`` package. Hence, for the time being,
     there are no dedicated examples how to use this class. Of course,
     you can instantiate an object as usual.
 
@@ -688,7 +688,7 @@ class MCAChannelCalibration:
         # Set the calibration parameters
         calibrated_values = calibration.calibrate(n_channels=4096)
 
-    The :obj:`MCAChannelData <evedata.evefile.entities.data.MCAChannelData>`
+    The :obj:`MCAChannelData <evefile.entities.data.MCAChannelData>`
     object will usually perform the calibration transparently for you if
     necessary. Even better, this object knows how many channels the MCA has.
 

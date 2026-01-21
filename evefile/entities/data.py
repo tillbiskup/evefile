@@ -1842,7 +1842,7 @@ class ArrayChannelData(ChannelData):
     The :class:`ArrayChannelData` class is not meant to be used
     directly, as any entities, but rather indirectly by means of the
     respective facades in the boundaries technical layer of the
-    :mod:`evedata.evefile` subpackage.
+    ``evefile`` package.
     Hence, for the time being, there are no dedicated examples how to use
     this class. Of course, you can instantiate an object as usual.
 
@@ -1962,7 +1962,7 @@ class MCAChannelData(ArrayChannelData):
     The :class:`MCAChannelData` class is not meant to be used
     directly, as any entities, but rather indirectly by means of the
     respective facades in the boundaries technical layer of the
-    :mod:`evedata.evefile` subpackage.
+    ``evefile`` package.
     Hence, for the time being, there are no dedicated examples how to use
     this class. Of course, you can instantiate an object as usual.
 
@@ -2005,7 +2005,7 @@ class MCAChannelROIData(MeasureData):
     The :class:`MCAChannelROIData` class is not meant to be used
     directly, as any entities, but rather indirectly by means of the
     respective facades in the boundaries technical layer of the
-    :mod:`evedata.evefile` subpackage.
+    ``evefile`` package.
     Hence, for the time being, there are no dedicated examples how to use
     this class. Of course, you can instantiate an object as usual.
 
