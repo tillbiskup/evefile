@@ -64,8 +64,7 @@ class DummyHDF5File:
         with h5py.File(self.filename, "r+") as file:
             file["c1"]["main"].create_group("array")
             for position in range(5, 20):
-                data_ = np.ndarray([4096], dtype=np.dtype([("0", "<i4")]))
-                data_["0"] = np.random.randint(low=0, high=1024, size=4096)
+                data_ = np.random.randint(low=0, high=1024, size=[4096, 1])
                 file["c1"]["main"]["array"].create_dataset(
                     str(position), data=data_
                 )
@@ -1402,11 +1401,25 @@ class TestArrayChannelData(unittest.TestCase):
             importer = data.HDF5DataImporter(source=self.filename)
             importer.item = f"/c1/main/array/{position}"
             importer.mapping = {
-                "0": "data",
+                0: "data",
             }
             self.data.importer.append(importer)
         self.data.get_data()
         self.assertEqual(2, self.data.data.ndim)
+
+    def test_arrays_are_one_per_row(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        self.data.get_data()
+        self.assertEqual(15, self.data.data.shape[0])
 
 
 class TestMCAChannelData(unittest.TestCase):

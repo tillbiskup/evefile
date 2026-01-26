@@ -1830,6 +1830,9 @@ class ArrayChannelData(ChannelData):
 
     This class represents 1D array values.
 
+    Individual arrays are stored one per row in the :attr:`data` attribute.
+    This allows for intuitive indexing of the individual arrays.
+
 
     Attributes
     ----------
@@ -1895,12 +1898,12 @@ class ArrayChannelData(ChannelData):
         for idx, importer in enumerate(self.importer):
             importer.load()
             if "data" in importer.mapping.values():
-                data = importer.data["0"]
+                data = importer.data[:, 0]
                 if self._data is None:
                     self._data = np.ndarray(
-                        [len(data), len(self.importer)], dtype=data.dtype
+                        [len(self.importer), len(data)], dtype=data.dtype
                     )
-                self._data[:, idx] = importer.data["0"]
+                self._data[idx, :] = importer.data[:, 0]
 
 
 class MCAChannelData(ArrayChannelData):
