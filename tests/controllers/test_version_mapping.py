@@ -146,7 +146,7 @@ class MockEveH5v4(MockEveH5):
                 )
             )
             getattr(self.c1.main.array, str(position)).dtype = np.dtype("<i4")
-        for option in ["ELTM", "ERTM", "PLTM", "PRTM", "R0", "R1"]:
+        for option in ["ELTM", "ERTM", "R0", "R1"]:
             dataset = MockHDF5Dataset(
                 name=f"/c1/main/array.{option}", filename=self.filename
             )
@@ -159,6 +159,8 @@ class MockEveH5v4(MockEveH5):
             "CALO",
             "CALQ",
             "CALS",
+            "PLTM",
+            "PRTM",
         ]:
             dataset = MockHDF5Dataset(
                 name=f"/c1/snapshot/array.{option}", filename=self.filename
@@ -1067,7 +1069,7 @@ class TestVersionMapperV5(unittest.TestCase):
         self.mapper.source.add_array_channel()
         self.mapper.map(destination=self.destination)
         offset = 15
-        pv_attributes = ["ELTM", "ERTM", "PLTM", "PRTM"]
+        pv_attributes = ["ELTM", "ERTM"]
         for idx, option in enumerate(pv_attributes):
             self.assertEqual(
                 f"/c1/main/array.{option}",
@@ -1076,8 +1078,6 @@ class TestVersionMapperV5(unittest.TestCase):
         attribute_names = [
             "life_time",
             "real_time",
-            "preset_life_time",
-            "preset_real_time",
         ]
         for idx, attribute in enumerate(attribute_names):
             self.assertEqual(
@@ -1133,6 +1133,23 @@ class TestVersionMapperV5(unittest.TestCase):
                 getattr(
                     self.destination_data("array").metadata.calibration, value
                 ),
+            )
+
+    def test_map_array_dataset_maps_options_from_snapshot(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        mapping_table = {
+            "PRTM": "preset_real_time",
+            "PLTM": "preset_life_time",
+        }
+        for key, value in mapping_table.items():
+            # noinspection PyUnresolvedReferences
+            self.assertEqual(
+                getattr(self.mapper.source.c1.snapshot, f"array.{key}").data[
+                    f"array.{key}"
+                ][0],
+                getattr(self.destination_data("array").metadata, value),
             )
 
     def test_map_mca_dataset_with_unknown_options_logs_warning(self):

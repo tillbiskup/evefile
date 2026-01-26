@@ -599,7 +599,7 @@ class ArrayChannelMetadata(ChannelMetadata):
     Metadata for channels with numeric 1D data.
 
     This class complements the class
-    :class:`evedata.evefile.entities.data.ArrayChannelData`.
+    :class:`evefile.entities.data.ArrayChannelData`.
 
 
     Examples
@@ -622,13 +622,25 @@ class MCAChannelMetadata(ArrayChannelMetadata):
     Metadata for multichannel analyzer (MCA) channels.
 
     This class complements the class
-    :class:`evedata.evefile.entities.data.MCAChannelData`.
+    :class:`evefile.entities.data.MCAChannelData`.
 
 
     Attributes
     ----------
     calibration : :class:`MCAChannelCalibration`
         Metadata for the calibration of the MCA channel.
+
+    preset_life_time : :class:`float`
+        Preset life time
+
+        For how many seconds to acquire data, according to a clock which
+        counts only when the hardware is ready to accept data (live time).
+
+    preset_real_time : :class:`float`
+        Preset real time
+
+        For how many seconds to acquire data, according to a free running
+        clock (real time)
 
 
     Examples
@@ -648,6 +660,8 @@ class MCAChannelMetadata(ArrayChannelMetadata):
     def __init__(self):
         super().__init__()
         self.calibration = MCAChannelCalibration()
+        self.preset_life_time = 0.0
+        self.preset_real_time = 0.0
 
 
 class MCAChannelCalibration:

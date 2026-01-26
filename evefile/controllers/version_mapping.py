@@ -912,6 +912,21 @@ class VersionMapperV5(VersionMapper):
                 name = ".".join([pv_base, option])
                 options_in_snapshot.remove(name)
                 self.datasets2map_in_snapshot.remove(name)
+        mapping_table = {
+            "PRTM": "preset_real_time",
+            "PLTM": "preset_life_time",
+        }
+        for option, attribute in mapping_table.items():
+            name = ".".join([pv_base, option])
+            hdf5_dataset = getattr(self.source.c1.snapshot, name)
+            hdf5_dataset.get_data()
+            setattr(
+                dataset.metadata,
+                attribute,
+                hdf5_dataset.data[name][0],
+            )
+            options_in_snapshot.remove(name)
+            self.datasets2map_in_snapshot.remove(name)
         for option in options_in_snapshot:
             logger.warning("Option %s unmapped", option.split(".")[-1])
             self.datasets2map_in_snapshot.remove(option)

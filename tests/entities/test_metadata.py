@@ -599,6 +599,8 @@ class TestMCAChannelMetadata(unittest.TestCase):
             "pv",
             "access_mode",
             "calibration",
+            "preset_life_time",
+            "preset_real_time",
         ]
         for attribute in attributes:
             with self.subTest(attribute=attribute):

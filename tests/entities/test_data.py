@@ -1425,8 +1425,6 @@ class TestMCAChannelData(unittest.TestCase):
             "roi",
             "life_time",
             "real_time",
-            "preset_life_time",
-            "preset_real_time",
             "axis",
         ]
         for attribute in attributes:

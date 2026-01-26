@@ -1833,7 +1833,7 @@ class ArrayChannelData(ChannelData):
 
     Attributes
     ----------
-    metadata : :class:`evedata.evefile.entities.metadata.ArrayChannelMetadata`
+    metadata : :class:`evefile.entities.metadata.ArrayChannelMetadata`
         Relevant metadata for the individual device.
 
 
@@ -1912,7 +1912,7 @@ class MCAChannelData(ArrayChannelData):
 
     Attributes
     ----------
-    metadata : :class:`evedata.evefile.entities.metadata.MCAChannelMetadata`
+    metadata : :class:`evefile.entities.metadata.MCAChannelMetadata`
         Relevant metadata for the individual device.
 
     roi : :class:`list`
@@ -1932,18 +1932,6 @@ class MCAChannelData(ArrayChannelData):
 
         After a read status operation, this field contains the elapsed
         real time, as reported by the hardware.
-
-    preset_life_time : :class:`numpy.ndarray`
-        Preset life time
-
-        For how many seconds to acquire data, according to a clock which
-        counts only when the hardware is ready to accept data (live time).
-
-    preset_real_time : :class:`numpy.ndarray`
-        Preset real time
-
-        For how many seconds to acquire data, according to a free running
-        clock (real time)
 
     axis : :class:`Axis`
         Data and metadata for the x-axis of the array data
@@ -1977,8 +1965,6 @@ class MCAChannelData(ArrayChannelData):
         self.roi = []
         self.life_time = np.ndarray(shape=[])
         self.real_time = np.ndarray(shape=[])
-        self.preset_life_time = np.ndarray(shape=[])
-        self.preset_real_time = np.ndarray(shape=[])
         self.axis = Axis()
 
 
