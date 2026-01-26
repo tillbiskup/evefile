@@ -5,6 +5,18 @@ Changelog
 This page contains a summary of changes between the official evefile releases. Only the biggest changes are listed here. A complete and detailed log of all changes is available through the `GitHub Repository Browser <https://gitlab1.ptb.de/eve/eve-file-py>`_.
 
 
+Version 0.2.0
+=============
+
+Not yet released
+
+
+New features
+------------
+
+* Support for array detectors, such as MCAs, via classes :class:`evefile.entities.data.ArrayChannelData`, :class:`evefile.entities.data.MCAChannelData`, :class:`evefile.entities.data.MCAChannelROIData`, and corresponding metadata classes.
+
+
 Version 0.1.0
 =============
 
