@@ -55,6 +55,77 @@ the :mod:`evefile.entities.metadata` module.
     You may click on the image for a larger view.
 
 
+Array channels
+--------------
+
+Array channels in their general form are channels collecting 1D data.
+Typical devices used here are MCAs, but oscilloscopes and vector signal
+analysers (VSA) would be other typical array channels. Hence, for these
+quite different types of array channels, distinct subclasses of the
+generic :class:`ArrayChannelData` class exist, see
+:numref:`Fig. %s <fig-uml_arraychannel_api>`.
+
+
+.. _fig-uml_arraychannel_api:
+
+.. figure:: /uml/arraychannel.*
+    :align: center
+    :width: 500px
+
+    Preliminary data model for the :class:`ArrayChannelData` classes. The
+    basic hierarchy is identical to :numref:`Fig. %s
+    <fig-uml_evefile.data_api>`. Details for the
+    :class:`MCAChannelData` class can be found in :numref:`Fig. %s
+    <fig-uml_mcachannel_api>`.
+
+
+Multi Channel Analysers (MCA) generally collect 1D data and typically have
+separate regions of interest (ROI) defined, containing the sum of the
+counts for the given region. For the EPICS MCA record,
+see https://millenia.cars.aps.anl.gov/software/epics/mcaRecord.html.
+
+
+.. _fig-uml_mcachannel_api:
+
+.. figure:: /uml/mcachannel.*
+    :align: center
+    :width: 750px
+
+    Preliminary data model for the :class:`MCAChannelData` classes. The basic
+    hierarchy is identical to :numref:`Fig. %s
+    <fig-uml_evefile.data_api>`, and here, the relevant part of the
+    metadata class hierarchy from :numref:`Fig. %s
+    <fig-uml_evefile_entities_metadata>` is shown as well. Separating the
+    :class:`MCAChannelCalibration
+    <evefile.entities.metadata.MCAChannelCalibration>` class from the
+    :class:`ArrayChannelMetadata
+    <evefile.entities.metadata.ArrayChannelMetadata>` allows to
+    add distinct behaviour, *e.g.* creating calibration curves from the
+    parameters.
+
+
+Note: The scalar attributes for ArrayChannelROIs will currently be saved
+as snapshots regardless of whether the actual ROI has been defined/used.
+Hence, the evefile package needs to decide based on the existence of the
+actual data whether to create a ROI object and attach it to
+:class:`ArrayChannelData`.
+
+The calibration parameters are needed to convert the *x* axis of the MCA
+spectrum into a real energy axis. Hence,
+the :class:`MCAChannelCalibration
+<evefile.entities.metadata.MCAChannelCalibration>`
+class will have methods for performing exactly this conversion. The
+relationship between calibrated units (cal) and channel number (chan) is
+defined as cal=CALO + chan\*CALS + chan^2\*CALQ. The first channel in the
+spectrum is defined as chan=0. However, not all MCAs/SDDs have these
+calibration values: Ketek SDDs seem to not have these values (internal
+calibration?).
+
+The real_time and life_time values can be used to get an idea of the
+amount of pile up occurring, *i.e.* having two photons with same energy
+within a short time interval reaching the detector being detected as one
+photon with twice the energy. Hence, latest in the radiometry package,
+distinct methods for this kind of analysis should be implemented.
 
 
 Individual classes
@@ -85,6 +156,18 @@ documentation:
       * :class:`IntervalChannelData`
 
         * :class:`IntervalNormalizedChannelData`
+
+      * :class:`ArrayChannelData`
+
+        * :class:`MCAChannelData`
+
+          * :class:`MCAChannelROIData`
+
+* :class:`DataImporter`
+
+  * :class:`HDF5DataImporter`
+
+* :class:`Axis`
 
 
 

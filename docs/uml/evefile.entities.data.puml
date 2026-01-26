@@ -80,4 +80,20 @@ class IntervalChannelData extends ChannelData {
 class IntervalNormalizedChannelData extends IntervalChannelData implements NormalizedChannelData {
 }
 
+class ArrayChannelData extends ChannelData {
+}
+
+class MCAChannelData extends ArrayChannelData {
+    axis : Axis
+}
+
+MCAChannelData *- Axis
+
+class Axis {
+    quantity : string
+    unit : string
+    symbol : string
+    label : string
+}
+
 @enduml

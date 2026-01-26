@@ -107,7 +107,7 @@ Data without context (*i.e.* metadata) are mostly useless. Hence, to every class
     :align: center
     :width: 750px
 
-    Class hierarchy of the evefile.metadata module. Each concrete class in the evefile.data module has a corresponding metadata class in this module. You may click on the image for a larger view.
+    Class hierarchy of the :mod:`evefile.entities.metadata` module. Each concrete class in the :mod:`evefile.entities.data` module has a corresponding metadata class in this module. You may click on the image for a larger view.
 
 
 A note on the :class:`AbstractDeviceMetadata <evefile.entities.metadata.AbstractDeviceMetadata>` interface class: The eveH5 dataset corresponding to the TimestampMetadata class is special in sense of having no PV and transport type nor an id. Several options have been considered to address this problem:

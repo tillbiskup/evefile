@@ -1,0 +1,34 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+class ChannelData extends MeasureData
+
+class ArrayChannelData extends ChannelData {}
+
+together {
+class MCAChannelData extends ArrayChannelData {
+    axis : Axis
+    roi[] : MCAChannelROIData
+    life_time : np.ndarray
+    real_time : np.ndarray
+}
+
+class Axis {
+    quantity : string
+    unit : string
+    symbol : string
+    label : string
+}
+
+MCAChannelData *- Axis
+
+MCAChannelROIData "0..n" -* MCAChannelData
+
+class MCAChannelROIData extends MeasureData {
+    {field} label : string
+    {field} marker : np.ndarray(dtype=int)
+}
+
+}
+
+@enduml

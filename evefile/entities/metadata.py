@@ -68,6 +68,12 @@ documentation:
 
         * :class:`IntervalNormalizedChannelMetadata`
 
+    * :class:`ArrayChannelMetadata`
+
+      * :class:`MCAChannelMetadata`
+
+        * :class:`MCAChannelCalibration`
+
 
 Module documentation
 ====================

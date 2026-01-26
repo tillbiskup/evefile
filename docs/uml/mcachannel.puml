@@ -1,0 +1,99 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+class Data {
+    metadata : Metadata
+    options : dict
+    _data : np.ndarray
+    _importer : DataImporter
+    data()
+}
+
+Data *- Metadata
+
+class MeasureData extends Data {
+    {field} position_counts : np.ndarray(dtype=int)
+}
+
+MeasureData *- MeasureMetadata
+
+class ChannelData extends MeasureData
+
+ChannelData *- ChannelMetadata
+
+class ArrayChannelData extends ChannelData {}
+
+class MCAChannelData extends ArrayChannelData {
+    axis : Axis
+    roi[] : MCAChannelROIData
+    life_time : np.ndarray
+    real_time : np.ndarray
+}
+
+class Axis {
+    quantity : string
+    unit : string
+    symbol : string
+    label : string
+}
+
+MCAChannelData *- MCAChannelMetadata
+
+MCAChannelData *-- Axis
+
+MCAChannelROIData "0..n" -* MCAChannelData
+
+MCAChannelROIData -[hidden]> MCAChannelData
+
+class MCAChannelROIData extends MeasureData {
+    {field} label : string
+    {field} marker : np.ndarray(dtype=int)
+}
+note bottom of MCAChannelROIData
+    Marker should be a two-element vector
+    with positions on the x axis of the spectrum.
+    Is "marker" the best name? Can we generalise
+    to fit to ""AreaChannelROIData"" as well?
+
+    What other attributes are relevant for
+    Array Channel ROIs?
+end note
+
+
+class Metadata {
+    name : string
+    options : dict
+}
+
+class MeasureMetadata extends Metadata {
+    unit : string
+}
+
+interface DeviceMetadata {
+    id : string
+    pv : string
+    access_mode : string
+}
+
+MeasureMetadata -[hidden]> DeviceMetadata
+
+class ChannelMetadata extends MeasureMetadata implements DeviceMetadata
+
+class ArrayChannelMetadata extends ChannelMetadata
+
+class MCAChannelMetadata extends ArrayChannelMetadata {
+    calibration : MCAChannelCalibration
+    preset_life_time : float
+    preset_real_time : float
+}
+
+MCAChannelMetadata *- MCAChannelCalibration
+
+class MCAChannelCalibration {
+    offset : float
+    slope : float
+    quadratic : float
+    calibrate()
+}
+
+@enduml
