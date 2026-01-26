@@ -145,9 +145,7 @@ class MockEveH5v4(MockEveH5):
                     name=f"/c1/main/array/{position}", filename=self.filename
                 )
             )
-            getattr(self.c1.main.array, str(position)).dtype = np.dtype(
-                [("0", "<i4")]
-            )
+            getattr(self.c1.main.array, str(position)).dtype = np.dtype("<i4")
         for option in ["ELTM", "ERTM", "PLTM", "PRTM", "R0", "R1"]:
             dataset = MockHDF5Dataset(
                 name=f"/c1/main/array.{option}", filename=self.filename

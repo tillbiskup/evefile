@@ -469,7 +469,11 @@ class VersionMapper:
         importer.source = dataset.filename
         importer.item = dataset.name
         for key, value in mapping.items():
-            importer.mapping[dataset.dtype.names[key]] = value
+            # Note: datasets in array group have no column name(s)
+            if dataset.dtype.names:
+                importer.mapping[dataset.dtype.names[key]] = value
+            else:
+                importer.mapping[key] = value
         return importer
 
     @staticmethod
