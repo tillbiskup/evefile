@@ -1425,6 +1425,11 @@ class TestArrayChannelData(unittest.TestCase):
 class TestMCAChannelData(unittest.TestCase):
     def setUp(self):
         self.data = data.MCAChannelData()
+        self.filename = "test.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
 
     def test_instantiate_class(self):
         pass
@@ -1449,6 +1454,38 @@ class TestMCAChannelData(unittest.TestCase):
 
     def test_axis_is_of_corresponding_type(self):
         self.assertIsInstance(self.data.axis, data.Axis)
+
+    def test_get_data_with_calibration_sets_axis(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        calibration_data = {
+            "offset": 1.0,
+            "slope": 2.0,
+            "quadratic": 1.5,
+        }
+        for field, value in calibration_data.items():
+            setattr(self.data.metadata.calibration, field, value)
+        self.data.get_data()
+        indices = np.linspace(
+            0,
+            self.data.data.shape[1],
+            self.data.data.shape[1],
+            endpoint=False,
+        )
+        axis = (
+            calibration_data["offset"]
+            + indices * calibration_data["slope"]
+            + indices**2 * calibration_data["quadratic"]
+        )
+        np.testing.assert_array_equal(axis, self.data.axis.values)
 
 
 class TestMCAChannelROIData(unittest.TestCase):
@@ -1498,7 +1535,6 @@ class TestDataImporter(unittest.TestCase):
         self.importer.load(source="foo")
 
     def test_load_returns_data(self):
-
         class MockDataImporter(data.DataImporter):
             def _load(self):
                 return "foo"

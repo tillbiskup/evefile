@@ -2053,6 +2053,55 @@ class MCAChannelData(ArrayChannelData):
         self.real_time = np.ndarray(shape=[])
         self.axis = Axis()
 
+    def get_data(self):
+        """
+        Load data (and variable option data) using the respective importer.
+
+        Data are loaded only on demand. Hence, upon the first access of the
+        :attr:`data` property, this method will be called, calling out to
+        the respective importers.
+
+        As :obj:`Data` objects may contain (variable) options that are
+        themselves data, but loading these data is only triggered when
+        accessing the :attr:`data` property, you can either once access the
+        :attr:`data` property or call this method.
+
+        Data may be spread over several HDF5 datasets, depending on the
+        version of the eveH5 file read. Hence, there may be several
+        importers, and they are dealt with sequentially.
+
+        Furthermore, for each importer type, there is a special private
+        method ``_import_from_<importer-type>``, with ``<importer-type>``
+        being the lowercase class name. Those classes using additional
+        importers beyond :class:`HDF5DataImporter` need to implement
+        additional private methods to handle the special importer classes. A
+        typical use case is the :class:`AreaChannelData` class dealing with
+        image data stored mostly in separate files.
+
+        .. todo::
+            * Decide whether all data need to be ordered according to their
+              first axis (monitor data and measure data), and if only the
+              latter, implement the sorting in the :meth:`MeasureData.get_data`
+              method. Otherwise, implement it here.
+            * Make this method version-aware, *i.e.* handle situation with
+              new eveH5 v8 schema where data are stored as single dataset
+              in HDF5, no longer as separate datasets. Should be rather
+              easy, as this would mean only one importer with "data" as
+              value?
+
+        """
+        super().get_data()
+        if self._data is not None:
+            indices = np.linspace(
+                0, self.data.shape[1], self.data.shape[1], endpoint=False
+            )
+            if self.axis.values.size == 0:
+                self.axis.values = (
+                    self.metadata.calibration.offset
+                    + indices * self.metadata.calibration.slope
+                    + indices**2 * self.metadata.calibration.quadratic
+                )
+
 
 class MCAChannelROIData(MeasureData):
     """
