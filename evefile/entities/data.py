@@ -1988,6 +1988,40 @@ class ArrayChannelData(ChannelData):
                     )
                 self._data[idx, :] = importer.data[:, 0]
 
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as column.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as column.
+
+        """
+        if self.data is not None:
+            index = np.arange(1, self.data.shape[0] + 1)
+        else:
+            index = [0]
+        dataframe = pd.DataFrame(
+            columns=self._data_attributes,
+            index=index,
+        )
+        dataframe["data"] = dataframe["data"].astype(object)
+        for idx, row in enumerate(index):
+            dataframe.loc[row, "data"] = self.data[idx, :]
+        if self.position_counts is not None and self.position_counts.ndim:
+            dataframe.index = self.position_counts
+        dataframe.index.name = "position"
+        return dataframe
+
 
 class MCAChannelData(ArrayChannelData):
     """

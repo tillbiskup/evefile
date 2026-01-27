@@ -1421,6 +1421,21 @@ class TestArrayChannelData(unittest.TestCase):
         self.data.get_data()
         self.assertEqual(15, self.data.data.shape[0])
 
+    def test_data_frame_contains_1d_arrays_per_cell(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        self.data.position_counts = np.arange(5, 20)
+        df = self.data.get_dataframe()
+        np.testing.assert_array_equal(df.loc[5, "data"], self.data.data[0, :])
+
 
 class TestMCAChannelData(unittest.TestCase):
     def setUp(self):
