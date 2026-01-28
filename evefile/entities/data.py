@@ -1,4 +1,4 @@
-"""
+r"""
 
 *Entities representing an eveH5 file on the data level.*
 
@@ -1978,15 +1978,21 @@ class ArrayChannelData(ChannelData):
               value?
 
         """
+        data = []
         for idx, importer in enumerate(self.importer):
             importer.load()
             if "data" in importer.mapping.values():
-                data = importer.data[:, 0]
-                if self._data is None:
-                    self._data = np.ndarray(
-                        [len(self.importer), len(data)], dtype=data.dtype
-                    )
-                self._data[idx, :] = importer.data[:, 0]
+                data.append(importer.data[:, 0])
+            else:
+                for column_name, attribute in importer.mapping.items():
+                    setattr(self, attribute, importer.data[column_name])
+        if self._data is None and data:
+            self._data = np.ndarray(
+                [len(data), len(data[0])], dtype=data[0].dtype
+            )
+        for idx in range(len(data)):  # noqa
+            print(idx)
+            self._data[idx, :] = data[idx]
 
     def get_dataframe(self):
         """

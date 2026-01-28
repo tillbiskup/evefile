@@ -1094,6 +1094,14 @@ class TestVersionMapperV5(unittest.TestCase):
         # Assuming two ROI datasets to be added
         self.assertEqual(2, len(self.destination_data("array").roi))
 
+    def test_map_array_adds_mca_roi_objects_if_only_in_snapshot(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        del self.mapper.source.c1.main._items["array.R1"]
+        self.mapper.map(destination=self.destination)
+        # Assuming two ROI datasets to be added
+        self.assertEqual(2, len(self.destination_data("array").roi))
+
     def test_map_array_adds_importers_to_mca_roi_objects(self):
         self.mapper.source = self.source
         self.mapper.source.add_array_channel()

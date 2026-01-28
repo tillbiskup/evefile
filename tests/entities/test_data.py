@@ -68,6 +68,13 @@ class DummyHDF5File:
                 file["c1"]["main"]["array"].create_dataset(
                     str(position), data=data_
                 )
+            eltm_data = np.ndarray(
+                [15],
+                dtype=np.dtype([("PosCounter", "<i4"), ("array.ELTM", "f")]),
+            )
+            eltm_data["PosCounter"] = np.arange(5, 20)
+            eltm_data["array.ELTM"] = np.random.random(15)
+            file["c1"]["main"].create_dataset("array.ELTM", data=eltm_data)
 
 
 class TestData(unittest.TestCase):
@@ -1404,8 +1411,15 @@ class TestArrayChannelData(unittest.TestCase):
                 0: "data",
             }
             self.data.importer.append(importer)
+        eltm_importer = data.HDF5DataImporter(source=self.filename)
+        eltm_importer.item = f"/c1/main/array.ELTM"
+        eltm_importer.mapping = {
+            1: "life_time",
+        }
+        self.data.importer.append(eltm_importer)
         self.data.get_data()
         self.assertEqual(2, self.data.data.ndim)
+        self.assertEqual(15, self.data.data.shape[0])
 
     def test_arrays_are_one_per_row(self):
         h5file = DummyHDF5File(filename=self.filename)
@@ -1501,6 +1515,26 @@ class TestMCAChannelData(unittest.TestCase):
             + indices**2 * calibration_data["quadratic"]
         )
         np.testing.assert_array_equal(axis, self.data.axis.values)
+
+    def test_get_data_loads_additional_options(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        eltm_importer = data.HDF5DataImporter(source=self.filename)
+        eltm_importer.item = f"/c1/main/array.ELTM"
+        eltm_importer.mapping = {
+            "array.ELTM": "life_time",
+        }
+        self.data.importer.append(eltm_importer)
+        self.data.get_data()
+        self.assertGreater(len(self.data.life_time), 0)
 
 
 class TestMCAChannelROIData(unittest.TestCase):

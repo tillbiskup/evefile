@@ -821,8 +821,6 @@ class VersionMapperV5(VersionMapper):
             mapping_table = {
                 "ELTM": "life_time",
                 "ERTM": "real_time",
-                "PLTM": "preset_life_time",
-                "PRTM": "preset_real_time",
             }
             attribute = option.split(".")[-1]
             if attribute in mapping_table:
@@ -891,7 +889,7 @@ class VersionMapperV5(VersionMapper):
         if roi_options:
             n_rois = len(set(int(item[1:-2]) for item in roi_options))
             for idx in range(n_rois):
-                if len(dataset.roi) < idx:
+                if len(dataset.roi) - 1 < idx:
                     roi = entities.data.MCAChannelROIData()
                     dataset.roi.append(roi)
                 else:
