@@ -16,9 +16,6 @@ For version 0.2
 
 * Re-add more complex data types for SDDs/array detectors
 
-  * Fix import order of arrays
-  * Check for consistent shape of positions and data
-
 
 Todos
 =====

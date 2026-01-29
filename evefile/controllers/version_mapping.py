@@ -797,8 +797,10 @@ class VersionMapperV5(VersionMapper):
     def _mca_dataset_set_data(self, dataset=None, hdf5_group=None):
         # Create positions vector and add it (needs to be done here)
         positions = [int(i) for i in hdf5_group.item_names()]
-        dataset.position_counts = np.asarray(positions, dtype="i4")
+        sorter = np.argsort(positions)
+        dataset.position_counts = np.asarray(np.sort(positions), dtype="i4")
         # Create and add importers for each individual array
+        importer_list = []
         for position in hdf5_group:
             importer_mapping = {
                 0: "data",
@@ -806,7 +808,9 @@ class VersionMapperV5(VersionMapper):
             importer = self.get_hdf5_dataset_importer(
                 dataset=position, mapping=importer_mapping
             )
-            dataset.importer.append(importer)
+            importer_list.append(importer)
+        for idx in sorter:
+            dataset.importer.append(importer_list[idx])
 
     def _mca_dataset_set_options_in_main(self, dataset=None):
         # Handle options in main section

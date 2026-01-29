@@ -1991,7 +1991,6 @@ class ArrayChannelData(ChannelData):
                 [len(data), len(data[0])], dtype=data[0].dtype
             )
         for idx in range(len(data)):  # noqa
-            print(idx)
             self._data[idx, :] = data[idx]
 
     def get_dataframe(self):

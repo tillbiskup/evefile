@@ -139,7 +139,8 @@ class MockEveH5v4(MockEveH5):
             "Name": "bsdd6_spectrum",
             "XML-ID": "BRQM1:mca08chan1",
         }
-        for position in range(5, 20):
+        for position in np.concat([np.arange(10, 20), np.arange(5, 10)]):
+            # range(5, 20):
             self.c1.main.array.add_item(
                 MockHDF5Dataset(
                     name=f"/c1/main/array/{position}", filename=self.filename
@@ -1055,6 +1056,16 @@ class TestVersionMapperV5(unittest.TestCase):
                 f"/c1/main/array/{pos}",
                 self.destination_data("array").importer[idx].item,
             )
+
+    def test_map_array_dataset_sorts_position_counts(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        position_counts = self.destination_data("array").position_counts
+        self.assertTrue(np.all(position_counts[1:] >= position_counts[:-1]))
+        self.assertTrue(
+            self.destination_data("array").importer[0].item.endswith("5")
+        )
 
     # noinspection PyUnresolvedReferences
     def test_map_array_dataset_removes_dataset_from_list2map(self):
