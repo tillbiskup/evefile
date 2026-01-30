@@ -8,13 +8,15 @@ A few ideas how to develop the project further, currently a list as a reminder f
 For version 0.3
 ===============
 
-* Re-add more complex data types for cameras?
+* Add more complex data types for cameras?
 
 
 For version 0.2
 ===============
 
-* Re-add more complex data types for SDDs/array detectors
+* Add more complex data types for SDDs/array detectors
+
+  * Handle preferred_channel if channel is option of dataset (e.g., ROI)
 
 
 Todos

@@ -1966,17 +1966,6 @@ class ArrayChannelData(ChannelData):
         typical use case is the :class:`AreaChannelData` class dealing with
         image data stored mostly in separate files.
 
-        .. todo::
-            * Decide whether all data need to be ordered according to their
-              first axis (monitor data and measure data), and if only the
-              latter, implement the sorting in the :meth:`MeasureData.get_data`
-              method. Otherwise, implement it here.
-            * Make this method version-aware, *i.e.* handle situation with
-              new eveH5 v8 schema where data are stored as single dataset
-              in HDF5, no longer as separate datasets. Should be rather
-              easy, as this would mean only one importer with "data" as
-              value?
-
         """
         data = []
         for idx, importer in enumerate(self.importer):
@@ -2116,17 +2105,6 @@ class MCAChannelData(ArrayChannelData):
         additional private methods to handle the special importer classes. A
         typical use case is the :class:`AreaChannelData` class dealing with
         image data stored mostly in separate files.
-
-        .. todo::
-            * Decide whether all data need to be ordered according to their
-              first axis (monitor data and measure data), and if only the
-              latter, implement the sorting in the :meth:`MeasureData.get_data`
-              method. Otherwise, implement it here.
-            * Make this method version-aware, *i.e.* handle situation with
-              new eveH5 v8 schema where data are stored as single dataset
-              in HDF5, no longer as separate datasets. Should be rather
-              easy, as this would mean only one importer with "data" as
-              value?
 
         """
         super().get_data()
