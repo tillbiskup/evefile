@@ -137,7 +137,7 @@ class MockEveH5v4(MockEveH5):
             "DetectorType": "Standard",
             "Access": "ca:array.VAL",
             "Name": "bsdd6_spectrum",
-            "XML-ID": "BRQM1:mca08chan1",
+            "XML-ID": "arraychan1",
         }
         for position in np.concat([np.arange(10, 20), np.arange(5, 10)]):
             # range(5, 20):
@@ -154,6 +154,8 @@ class MockEveH5v4(MockEveH5):
             dataset.attributes = {
                 "DeviceType": "Channel",
                 "Access": f"ca:array.{option}",
+                "Name": f"bssd6_{option}",
+                "XML-ID": f"array.{option}",
             }
             self.c1.main.add_item(dataset)
         for option in [
@@ -1049,9 +1051,12 @@ class TestVersionMapperV5(unittest.TestCase):
         )
         positions = [int(i) for i in self.source.c1.main.array.item_names()]
         self.assertListEqual(
-            positions, list(self.destination_data("array").position_counts)
+            sorted(positions),
+            list(self.destination_data("array").position_counts),
         )
-        for idx, pos in enumerate(self.source.c1.main.array.item_names()):
+        for idx, pos in enumerate(
+            sorted(self.source.c1.main.array.item_names(), key=int)
+        ):
             self.assertEqual(
                 f"/c1/main/array/{pos}",
                 self.destination_data("array").importer[idx].item,
@@ -1104,6 +1109,17 @@ class TestVersionMapperV5(unittest.TestCase):
         self.mapper.map(destination=self.destination)
         # Assuming two ROI datasets to be added
         self.assertEqual(2, len(self.destination_data("array").roi))
+
+    def test_map_array_maps_mca_roi_metadata(self):
+        self.mapper.source = self.source
+        self.mapper.source.add_array_channel()
+        self.mapper.map(destination=self.destination)
+        for attribute in ["name", "id", "pv", "access_mode"]:
+            self.assertTrue(
+                getattr(
+                    self.destination_data("array").roi[0].metadata, attribute
+                )
+            )
 
     def test_map_array_adds_mca_roi_objects_if_only_in_snapshot(self):
         self.mapper.source = self.source

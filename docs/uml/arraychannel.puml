@@ -24,7 +24,7 @@ MCAChannelData *- Axis
 
 MCAChannelROIData "0..n" -* MCAChannelData
 
-class MCAChannelROIData extends MeasureData {
+class MCAChannelROIData extends ChannelData {
     {field} label : string
     {field} marker : np.ndarray(dtype=int)
 }

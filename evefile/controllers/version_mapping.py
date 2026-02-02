@@ -846,6 +846,10 @@ class VersionMapperV5(VersionMapper):
                     mapping=importer_mapping,
                 )
                 roi.importer.append(importer)
+                self.set_basic_metadata(
+                    hdf5_item=getattr(self.source.c1.main, option),
+                    dataset=roi,
+                )
                 dataset.roi.append(roi)
                 self.datasets2map_in_main.remove(option)
 

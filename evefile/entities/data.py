@@ -2120,7 +2120,7 @@ class MCAChannelData(ArrayChannelData):
                 )
 
 
-class MCAChannelROIData(MeasureData):
+class MCAChannelROIData(ChannelData):
     """
     Data for an individual ROI of an MCA detector channel.
 
