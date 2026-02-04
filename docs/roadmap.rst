@@ -16,8 +16,6 @@ For version 0.2
 
 * Add more complex data types for SDDs/array detectors
 
-  * Handle preferred_channel if channel is option of dataset (e.g., ROI)
-
 
 Todos
 =====

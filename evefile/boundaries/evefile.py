@@ -394,7 +394,15 @@ class EveFile(File):
         if self.metadata.preferred_axis:
             output[0] = self.data[self.metadata.preferred_axis]
         if self.metadata.preferred_channel:
-            output[1] = self.data[self.metadata.preferred_channel]
+            if self.metadata.preferred_channel in self.data:
+                output[1] = self.data[self.metadata.preferred_channel]
+            else:
+                logger.warning(
+                    "Dataset {} not found, possibly an "
+                    "attribute or option?".format(
+                        self.metadata.preferred_channel
+                    )
+                )
         if self.metadata.preferred_normalisation_channel:
             output[2] = self.data[
                 self.metadata.preferred_normalisation_channel
