@@ -618,7 +618,6 @@ class TestMCAChannelMetadata(unittest.TestCase):
             and not callable(getattr(self.metadata, item))
             and not item == "options"
         ]
-        print(output)
         for attribute in attributes:
             self.assertIn(attribute, output)
 
