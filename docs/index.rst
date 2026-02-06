@@ -34,6 +34,8 @@ A list of features:
 
 * Importer for eve HDF5 files (used at PTB in Berlin, Germany)
 
+* Platform-independent (yes, it works on Windows and macOS)
+
 * Fully backwards-compatible to older eveH5 versions
 
 * Complete information available that is contained in an eveH5 file

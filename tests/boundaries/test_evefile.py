@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 import unittest
 from io import StringIO
@@ -144,6 +145,7 @@ class TestEveFile(unittest.TestCase):
     def setUp(self):
         self.filename = "file.h5"
         self.evefile = evefile.EveFile(filename=self.filename, load=False)
+        self.logger = logging.getLogger(name="evedata")
 
     def tearDown(self):
         if os.path.exists(self.filename):
@@ -263,6 +265,22 @@ class TestEveFile(unittest.TestCase):
         self.assertListEqual(
             self.evefile.get_preferred_data(), [None, None, None]
         )
+
+    def test_get_preferred_data_with_missing_channel_logs_warning(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create(set_preferred=True)
+        self.evefile = evefile.EveFile(filename=self.filename)
+        self.evefile.metadata.preferred_channel = "foo"
+        self.logger.setLevel(logging.WARNING)
+        self.logger.addHandler(logging.NullHandler())
+        with self.assertLogs(level=logging.WARNING) as captured:
+            preferred_data = self.evefile.get_preferred_data()
+            self.assertEqual(len(captured.records), 1)
+            self.assertEqual(
+                captured.records[0].getMessage(),
+                "Dataset foo not found, possibly an attribute or option?",
+            )
+        self.assertIsNone(preferred_data[1])
 
     def test_get_joined_data_returns_list(self):
         h5file = DummyHDF5File(filename=self.filename)

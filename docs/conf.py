@@ -18,7 +18,7 @@ with open(
     release_ = version_file.read().strip()
 
 project = "evefile"
-copyright = "2025, Till Biskup"
+copyright = "2025-, Till Biskup"
 author = "Till Biskup"
 
 # The short X.Y version

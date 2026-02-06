@@ -241,9 +241,13 @@ main/standard section yet.
 
     The IDL Cruncher seems to use LastNaNFill combined with applying some
     "dirty" fixes to account for scans using MPSKIP and those scans
-    "monitoring" a motor position via a pseudo-detector. The ``EveHDF``
-    class (DS) uses LastNaNFill as a default as well but does *not* apply
-    some additional post-processing.
+    "monitoring" a motor position via a pseudo-detector.
+
+    The ``EveHDF`` class uses LastNaNFill as a default as well but
+    additionally fills the channel values with the last known value,
+    thus making up data. Therefore, EveHDF is considered harmful with
+    potentially very serious consequences of your data analysis and cannot
+    be recommended for use.
 
     Shall fill modes be something to change in a viewer? And which fill
     modes are used in practice (and do we have any chance to find this out)?

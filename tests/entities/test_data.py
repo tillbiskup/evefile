@@ -60,6 +60,22 @@ class DummyHDF5File:
             poscounttimer = meta.create_dataset("PosCountTimer", data=data_)
             poscounttimer.attrs["Unit"] = np.bytes_(["msecs"])
 
+    def add_array_data(self):
+        with h5py.File(self.filename, "r+") as file:
+            file["c1"]["main"].create_group("array")
+            for position in range(5, 20):
+                data_ = np.random.randint(low=0, high=1024, size=[4096, 1])
+                file["c1"]["main"]["array"].create_dataset(
+                    str(position), data=data_
+                )
+            eltm_data = np.ndarray(
+                [15],
+                dtype=np.dtype([("PosCounter", "<i4"), ("array.ELTM", "f")]),
+            )
+            eltm_data["PosCounter"] = np.arange(5, 20)
+            eltm_data["array.ELTM"] = np.random.random(15)
+            file["c1"]["main"].create_dataset("array.ELTM", data=eltm_data)
+
 
 class TestData(unittest.TestCase):
     def setUp(self):
@@ -242,6 +258,45 @@ class TestData(unittest.TestCase):
         self.data.importer.append(importer)
         dataframe = self.data.get_dataframe()
         self.assertTrue(dataframe.size)
+
+
+class TestAxis(unittest.TestCase):
+    def setUp(self):
+        self.axis = data.Axis()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "quantity",
+            "unit",
+            "symbol",
+            "label",
+            "values",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.axis, attribute))
+
+    def test_values_is_ndarray(self):
+        self.assertTrue(isinstance(self.axis.values, np.ndarray))
+
+    def test_values_is_1d(self):
+        self.assertTrue(self.axis.values.ndim, 1)
+
+    def test_set_values(self):
+        self.axis.values = np.zeros(0)
+
+    def test_set_wrong_type_for_values_fails(self):
+        with self.assertRaisesRegex(ValueError, "Wrong type: expected"):
+            self.axis.values = "foo"
+
+    def test_set_multidimensional_values_fails(self):
+        with self.assertRaisesRegex(
+            IndexError, "Values need to be " "one-dimensional"
+        ):
+            self.axis.values = np.zeros([0, 0])
 
 
 class TestMonitorData(unittest.TestCase):
@@ -1317,6 +1372,192 @@ class TestIntervalNormalizedChannelData(unittest.TestCase):
         self.assertTrue(self.mock_data.get_data_called)
 
 
+class TestArrayChannelData(unittest.TestCase):
+    def setUp(self):
+        self.data = data.ArrayChannelData()
+        self.filename = "test.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "metadata",
+            "options",
+            "data",
+            "position_counts",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.data, attribute))
+
+    def test_metadata_are_of_corresponding_type(self):
+        self.assertIsInstance(
+            self.data.metadata, metadata.ArrayChannelMetadata
+        )
+
+    def test_get_data_loads_data(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        eltm_importer = data.HDF5DataImporter(source=self.filename)
+        eltm_importer.item = f"/c1/main/array.ELTM"
+        eltm_importer.mapping = {
+            1: "life_time",
+        }
+        self.data.importer.append(eltm_importer)
+        self.data.get_data()
+        self.assertEqual(2, self.data.data.ndim)
+        self.assertEqual(15, self.data.data.shape[0])
+
+    def test_arrays_are_one_per_row(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        self.data.get_data()
+        self.assertEqual(15, self.data.data.shape[0])
+
+    def test_data_frame_contains_1d_arrays_per_cell(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        self.data.position_counts = np.arange(5, 20)
+        df = self.data.get_dataframe()
+        np.testing.assert_array_equal(df.loc[5, "data"], self.data.data[0, :])
+
+
+class TestMCAChannelData(unittest.TestCase):
+    def setUp(self):
+        self.data = data.MCAChannelData()
+        self.filename = "test.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "metadata",
+            "options",
+            "data",
+            "position_counts",
+            "roi",
+            "life_time",
+            "real_time",
+            "axis",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.data, attribute))
+
+    def test_metadata_are_of_corresponding_type(self):
+        self.assertIsInstance(self.data.metadata, metadata.MCAChannelMetadata)
+
+    def test_axis_is_of_corresponding_type(self):
+        self.assertIsInstance(self.data.axis, data.Axis)
+
+    def test_get_data_with_calibration_sets_axis(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        calibration_data = {
+            "offset": 1.0,
+            "slope": 2.0,
+            "quadratic": 1.5,
+        }
+        for field, value in calibration_data.items():
+            setattr(self.data.metadata.calibration, field, value)
+        self.data.get_data()
+        indices = np.linspace(
+            0,
+            self.data.data.shape[1],
+            self.data.data.shape[1],
+            endpoint=False,
+        )
+        axis = (
+            calibration_data["offset"]
+            + indices * calibration_data["slope"]
+            + indices**2 * calibration_data["quadratic"]
+        )
+        np.testing.assert_array_equal(axis, self.data.axis.values)
+
+    def test_get_data_loads_additional_options(self):
+        h5file = DummyHDF5File(filename=self.filename)
+        h5file.create()
+        h5file.add_array_data()
+        for position in range(5, 20):
+            importer = data.HDF5DataImporter(source=self.filename)
+            importer.item = f"/c1/main/array/{position}"
+            importer.mapping = {
+                0: "data",
+            }
+            self.data.importer.append(importer)
+        eltm_importer = data.HDF5DataImporter(source=self.filename)
+        eltm_importer.item = f"/c1/main/array.ELTM"
+        eltm_importer.mapping = {
+            "array.ELTM": "life_time",
+        }
+        self.data.importer.append(eltm_importer)
+        self.data.get_data()
+        self.assertGreater(len(self.data.life_time), 0)
+
+
+class TestMCAChannelROIData(unittest.TestCase):
+    def setUp(self):
+        self.data = data.MCAChannelROIData()
+
+    def test_instantiate_class(self):
+        pass
+
+    def test_has_attributes(self):
+        attributes = [
+            "metadata",
+            "options",
+            "data",
+            "position_counts",
+            "label",
+            "marker",
+        ]
+        for attribute in attributes:
+            with self.subTest(attribute=attribute):
+                self.assertTrue(hasattr(self.data, attribute))
+
+
 class TestDataImporter(unittest.TestCase):
     def setUp(self):
         self.importer = data.DataImporter()
@@ -1343,7 +1584,6 @@ class TestDataImporter(unittest.TestCase):
         self.importer.load(source="foo")
 
     def test_load_returns_data(self):
-
         class MockDataImporter(data.DataImporter):
             def _load(self):
                 return "foo"

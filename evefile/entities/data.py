@@ -1,4 +1,4 @@
-"""
+r"""
 
 *Entities representing an eveH5 file on the data level.*
 
@@ -55,6 +55,77 @@ the :mod:`evefile.entities.metadata` module.
     You may click on the image for a larger view.
 
 
+Array channels
+--------------
+
+Array channels in their general form are channels collecting 1D data.
+Typical devices used here are MCAs, but oscilloscopes and vector signal
+analysers (VSA) would be other typical array channels. Hence, for these
+quite different types of array channels, distinct subclasses of the
+generic :class:`ArrayChannelData` class exist, see
+:numref:`Fig. %s <fig-uml_arraychannel_api>`.
+
+
+.. _fig-uml_arraychannel_api:
+
+.. figure:: /uml/arraychannel.*
+    :align: center
+    :width: 500px
+
+    Preliminary data model for the :class:`ArrayChannelData` classes. The
+    basic hierarchy is identical to :numref:`Fig. %s
+    <fig-uml_evefile.data_api>`. Details for the
+    :class:`MCAChannelData` class can be found in :numref:`Fig. %s
+    <fig-uml_mcachannel_api>`.
+
+
+Multi Channel Analysers (MCA) generally collect 1D data and typically have
+separate regions of interest (ROI) defined, containing the sum of the
+counts for the given region. For the EPICS MCA record,
+see https://millenia.cars.aps.anl.gov/software/epics/mcaRecord.html.
+
+
+.. _fig-uml_mcachannel_api:
+
+.. figure:: /uml/mcachannel.*
+    :align: center
+    :width: 750px
+
+    Preliminary data model for the :class:`MCAChannelData` classes. The basic
+    hierarchy is identical to :numref:`Fig. %s
+    <fig-uml_evefile.data_api>`, and here, the relevant part of the
+    metadata class hierarchy from :numref:`Fig. %s
+    <fig-uml_evefile_entities_metadata>` is shown as well. Separating the
+    :class:`MCAChannelCalibration
+    <evefile.entities.metadata.MCAChannelCalibration>` class from the
+    :class:`ArrayChannelMetadata
+    <evefile.entities.metadata.ArrayChannelMetadata>` allows to
+    add distinct behaviour, *e.g.* creating calibration curves from the
+    parameters.
+
+
+Note: The scalar attributes for ArrayChannelROIs will currently be saved
+as snapshots regardless of whether the actual ROI has been defined/used.
+Hence, the evefile package needs to decide based on the existence of the
+actual data whether to create a ROI object and attach it to
+:class:`ArrayChannelData`.
+
+The calibration parameters are needed to convert the *x* axis of the MCA
+spectrum into a real energy axis. Hence,
+the :class:`MCAChannelCalibration
+<evefile.entities.metadata.MCAChannelCalibration>`
+class will have methods for performing exactly this conversion. The
+relationship between calibrated units (cal) and channel number (chan) is
+defined as cal=CALO + chan\*CALS + chan^2\*CALQ. The first channel in the
+spectrum is defined as chan=0. However, not all MCAs/SDDs have these
+calibration values: Ketek SDDs seem to not have these values (internal
+calibration?).
+
+The real_time and life_time values can be used to get an idea of the
+amount of pile up occurring, *i.e.* having two photons with same energy
+within a short time interval reaching the detector being detected as one
+photon with twice the energy. Hence, latest in the radiometry package,
+distinct methods for this kind of analysis should be implemented.
 
 
 Individual classes
@@ -85,6 +156,18 @@ documentation:
       * :class:`IntervalChannelData`
 
         * :class:`IntervalNormalizedChannelData`
+
+      * :class:`ArrayChannelData`
+
+        * :class:`MCAChannelData`
+
+          * :class:`MCAChannelROIData`
+
+* :class:`DataImporter`
+
+  * :class:`HDF5DataImporter`
+
+* :class:`Axis`
 
 
 
@@ -390,6 +473,100 @@ class Data:
             index=index,
         )
         return dataframe
+
+
+class Axis:
+    """Axis for data.
+
+    An axis contains always both, numerical values and the metadata
+    necessary to create axis labels and to make sense of the numerical
+    information.
+
+    Attributes
+    ----------
+    quantity : :class:`str`
+        quantity of the numerical data, usually used as first part of an
+        automatically generated axis label
+
+    unit : :class:`str`
+        unit of the numerical data, usually used as second part of an
+        automatically generated axis label
+
+    symbol : :class:`str`
+        symbol for the quantity of the numerical data, usually used as first
+        part of an automatically generated axis label
+
+    label : :class:`str`
+        manual label for the axis, particularly useful in cases where no
+        quantity and unit are provided or should be overwritten.
+
+
+    .. note::
+        There are three alternative ways of writing axis labels, one with
+        using the quantity name and the unit, one with using the quantity
+        symbol and the unit, and one using both, quantity name and symbol,
+        usually separated by comma. Quantity and unit shall always be
+        separated by a slash. Which way you prefer is a matter of personal
+        taste and given context.
+
+
+    Raises
+    ------
+    ValueError
+        Raised when trying to set axis values to another type than numpy array
+    IndexError
+        Raised when trying to set axis values to an array with more than one
+        dimension.
+        Raised if index does not have the same length as values.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._values = np.zeros(0)
+        self.quantity = ""
+        self.symbol = ""
+        self.unit = ""
+        self.label = ""
+
+    @property
+    def values(self):
+        """
+        Get or set the numerical axis values.
+
+        Values require to be a one-dimensional numpy array. Trying to set
+        values to either a different type that cannot be converted to a
+        numpy array or a numpy array with more than one dimension will raise
+        a corresponding error.
+
+        Raises
+        ------
+        ValueError
+            Raised if axis values are of wrong type
+        IndexError
+            Raised if axis values are of wrong dimension, i.e. not a vector
+
+        """
+        return self._values
+
+    @values.setter
+    def values(self, values):
+        if not isinstance(values, type(self._values)):
+            values = np.asarray(values)
+            if (
+                not isinstance(values, type(self._values))
+                or values.dtype != self._values.dtype
+            ):
+                raise ValueError(
+                    f"Wrong type: expected {self._values.dtype}, "
+                    f"got {values.dtype}"
+                )
+        if values.ndim > 1:
+            raise IndexError("Values need to be one-dimensional")
+        self._values = values
 
 
 class MonitorData(Data):
@@ -1719,6 +1896,266 @@ class IntervalNormalizedChannelData(
 
         """
         return super().get_dataframe()
+
+
+class ArrayChannelData(ChannelData):
+    """
+    Data for channels with numeric 1D data.
+
+    Detector channels can be distinguished by the dimension of their data:
+
+    0D
+        scalar values per position, including average and interval channels
+    1D
+        array values, *i.e.* vectors, per position
+    2D
+        area values, *i.e.* images, per position
+
+    This class represents 1D array values.
+
+    Individual arrays are stored one per row in the :attr:`data` attribute.
+    This allows for intuitive indexing of the individual arrays.
+
+
+    Attributes
+    ----------
+    metadata : :class:`evefile.entities.metadata.ArrayChannelMetadata`
+        Relevant metadata for the individual device.
+
+
+    Examples
+    --------
+    The :class:`ArrayChannelData` class is not meant to be used
+    directly, as any entities, but rather indirectly by means of the
+    respective facades in the boundaries technical layer of the
+    ``evefile`` package.
+    Hence, for the time being, there are no dedicated examples how to use
+    this class. Of course, you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.metadata = metadata.ArrayChannelMetadata()
+
+    def get_data(self):
+        """
+        Load data (and variable option data) using the respective importer.
+
+        Data are loaded only on demand. Hence, upon the first access of the
+        :attr:`data` property, this method will be called, calling out to
+        the respective importers.
+
+        As :obj:`Data` objects may contain (variable) options that are
+        themselves data, but loading these data is only triggered when
+        accessing the :attr:`data` property, you can either once access the
+        :attr:`data` property or call this method.
+
+        Data may be spread over several HDF5 datasets, depending on the
+        version of the eveH5 file read. Hence, there may be several
+        importers, and they are dealt with sequentially.
+
+        Furthermore, for each importer type, there is a special private
+        method ``_import_from_<importer-type>``, with ``<importer-type>``
+        being the lowercase class name. Those classes using additional
+        importers beyond :class:`HDF5DataImporter` need to implement
+        additional private methods to handle the special importer classes. A
+        typical use case is the :class:`AreaChannelData` class dealing with
+        image data stored mostly in separate files.
+
+        """
+        data = []
+        for idx, importer in enumerate(self.importer):
+            importer.load()
+            if "data" in importer.mapping.values():
+                data.append(importer.data[:, 0])
+            else:
+                for column_name, attribute in importer.mapping.items():
+                    setattr(self, attribute, importer.data[column_name])
+        if self._data is None and data:
+            self._data = np.ndarray(
+                [len(data), len(data[0])], dtype=data[0].dtype
+            )
+        for idx in range(len(data)):  # noqa
+            self._data[idx, :] = data[idx]
+
+    def get_dataframe(self):
+        """
+        Retrieve Pandas DataFrame with data as column.
+
+        .. important::
+
+            While working with a Pandas DataFrame may seem convenient,
+            you're loosing basically all the relevant metadata of the
+            datasets. Hence, this method is rather a convenience method to
+            be backwards-compatible to older interfaces, but it is
+            explicitly *not* suggested for extensive use.
+
+        Returns
+        -------
+        dataframe : :class:`pandas.DataFrame`
+            Pandas DataFrame containing data as column.
+
+        """
+        if self.data is not None:
+            index = np.arange(1, self.data.shape[0] + 1)
+        else:
+            index = [0]
+        dataframe = pd.DataFrame(
+            columns=self._data_attributes,
+            index=index,
+        )
+        dataframe["data"] = dataframe["data"].astype(object)
+        for idx, row in enumerate(index):
+            dataframe.loc[row, "data"] = self.data[idx, :]
+        if self.position_counts is not None and self.position_counts.ndim:
+            dataframe.index = self.position_counts
+        dataframe.index.name = "position"
+        return dataframe
+
+
+class MCAChannelData(ArrayChannelData):
+    """
+    Data for multichannel analyzer (MCA) channels.
+
+    MCA channel data are usually 1D data, *i.e.* arrays or vectors.
+
+
+    Attributes
+    ----------
+    metadata : :class:`evefile.entities.metadata.MCAChannelMetadata`
+        Relevant metadata for the individual device.
+
+    roi : :class:`list`
+        List of data for the individual ROIs defined.
+
+        Individual items in the list are objects of class
+        :class:`MCAChannelROIData`.
+
+    life_time : :class:`numpy.ndarray`
+        Elapsed life time
+
+        After a read status operation, this field contains the elapsed
+        live time, as reported by the hardware.
+
+    real_time : :class:`numpy.ndarray`
+        Elapsed real time
+
+        After a read status operation, this field contains the elapsed
+        real time, as reported by the hardware.
+
+    axis : :class:`Axis`
+        Data and metadata for the x-axis of the array data
+
+        MCAs record array data, and to make sense of the indices of the
+        arrays, usually some calibration parameters are recorded that can
+        be used to convert the indices of the array to an actual axis - be
+        it energy or time or else.
+
+        See :class:`evefile.entities.metadata.MCAChannelCalibration` for
+        details of the calibration data that may be available for your MCA.
+
+
+    Examples
+    --------
+    The :class:`MCAChannelData` class is not meant to be used
+    directly, as any entities, but rather indirectly by means of the
+    respective facades in the boundaries technical layer of the
+    ``evefile`` package.
+    Hence, for the time being, there are no dedicated examples how to use
+    this class. Of course, you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.metadata = metadata.MCAChannelMetadata()
+        self.roi = []
+        self.life_time = np.ndarray(shape=[])
+        self.real_time = np.ndarray(shape=[])
+        self.axis = Axis()
+
+    def get_data(self):
+        """
+        Load data (and variable option data) using the respective importer.
+
+        Data are loaded only on demand. Hence, upon the first access of the
+        :attr:`data` property, this method will be called, calling out to
+        the respective importers.
+
+        As :obj:`Data` objects may contain (variable) options that are
+        themselves data, but loading these data is only triggered when
+        accessing the :attr:`data` property, you can either once access the
+        :attr:`data` property or call this method.
+
+        Data may be spread over several HDF5 datasets, depending on the
+        version of the eveH5 file read. Hence, there may be several
+        importers, and they are dealt with sequentially.
+
+        Furthermore, for each importer type, there is a special private
+        method ``_import_from_<importer-type>``, with ``<importer-type>``
+        being the lowercase class name. Those classes using additional
+        importers beyond :class:`HDF5DataImporter` need to implement
+        additional private methods to handle the special importer classes. A
+        typical use case is the :class:`AreaChannelData` class dealing with
+        image data stored mostly in separate files.
+
+        """
+        super().get_data()
+        if self._data is not None:
+            indices = np.linspace(
+                0, self.data.shape[1], self.data.shape[1], endpoint=False
+            )
+            if self.axis.values.size == 0:
+                self.axis.values = (
+                    self.metadata.calibration.offset
+                    + indices * self.metadata.calibration.slope
+                    + indices**2 * self.metadata.calibration.quadratic
+                )
+
+
+class MCAChannelROIData(ChannelData):
+    """
+    Data for an individual ROI of an MCA detector channel.
+
+    Many MCAs allow to define one or several regions of interest (ROI).
+    This class contains the relevant data for an individual ROI.
+
+
+    Attributes
+    ----------
+    label : :class:`str`
+        Label for the ROI provided by the operator.
+
+    marker : :class:`numpy.ndarray`
+        Two-element vector of integer values containing the left and right
+        boundary of the ROI.
+
+
+    Examples
+    --------
+    The :class:`MCAChannelROIData` class is not meant to be used
+    directly, as any entities, but rather indirectly by means of the
+    respective facades in the boundaries technical layer of the
+    ``evefile`` package.
+    Hence, for the time being, there are no dedicated examples how to use
+    this class. Of course, you can instantiate an object as usual.
+
+
+    .. versionadded:: 0.2
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.label = ""
+        self.marker = np.asarray([0, 0], dtype=int)
 
 
 class DataImporter:
