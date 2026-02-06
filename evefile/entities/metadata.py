@@ -137,6 +137,7 @@ class Metadata:
         #       string representation using self.__str__
         # Use only append or extend in subclasses!
         self._attributes = ["name"]
+        self._attribute_name_length = 0
 
     def __str__(self):
         """
@@ -149,12 +150,12 @@ class Metadata:
 
         """
         output = []
-        attribute_name_length = max(
+        self._attribute_name_length = max(
             len(attribute) for attribute in self._attributes
         )
         for attribute in self._attributes:
             output.append(
-                f"{attribute:>{attribute_name_length}}:"
+                f"{attribute:>{self._attribute_name_length}}:"
                 f" {getattr(self, attribute)}"
             )
         if self.options:
@@ -668,6 +669,22 @@ class MCAChannelMetadata(ArrayChannelMetadata):
         self.calibration = MCAChannelCalibration()
         self.preset_life_time = 0.0
         self.preset_real_time = 0.0
+        # Note: calibration gets handled explicitly
+        self._attributes.extend(["preset_life_time", "preset_real_time"])
+
+    def __str__(self):
+        str_representation = super().__str__()
+        attribute = "calibration"
+        str_representation += (
+            f"\n{attribute:>{self._attribute_name_length}}:\n"
+        )
+        whitespace = " " * (self._attribute_name_length + 2)
+        calibration_parameters = [
+            f"{whitespace}{parameter}"
+            for parameter in self.calibration.__str__().split("\n")
+        ]
+        str_representation += "\n".join(calibration_parameters)
+        return str_representation
 
 
 class MCAChannelCalibration:
@@ -721,6 +738,32 @@ class MCAChannelCalibration:
         self.offset = 0.0
         self.slope = 1.0
         self.quadratic = 0.0
+
+    def __str__(self):
+        """
+        Human-readable representation of the metadata.
+
+        Returns
+        -------
+        output : :class:`str`
+            Multiline string with one attribute per line
+
+        """
+        output = []
+        attributes = [
+            item
+            for item in dir(self)
+            if not item.startswith("_") and not callable(getattr(self, item))
+        ]
+        attribute_name_length = max(
+            len(attribute) for attribute in attributes
+        )
+        for attribute in attributes:
+            output.append(
+                f"{attribute:>{attribute_name_length}}:"
+                f" {getattr(self, attribute)}"
+            )
+        return "\n".join(output)
 
     def calibrate(self, n_channels=0):
         """

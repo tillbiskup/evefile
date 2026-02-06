@@ -606,6 +606,22 @@ class TestMCAChannelMetadata(unittest.TestCase):
             with self.subTest(attribute=attribute):
                 self.assertTrue(hasattr(self.metadata, attribute))
 
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.metadata)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.metadata)
+            if not item.startswith("_")
+            and not callable(getattr(self.metadata, item))
+            and not item == "options"
+        ]
+        print(output)
+        for attribute in attributes:
+            self.assertIn(attribute, output)
+
 
 class TestMCAChannelCalibration(unittest.TestCase):
     def setUp(self):
@@ -641,3 +657,17 @@ class TestMCAChannelCalibration(unittest.TestCase):
         )
         calibrated_values = self.calibration.calibrate(n_channels=n_channels)
         np.testing.assert_array_equal(expected_values, calibrated_values)
+
+    def test_print_prints_attribute_names(self):
+        temp_stdout = StringIO()
+        with contextlib.redirect_stdout(temp_stdout):
+            print(self.calibration)
+        output = temp_stdout.getvalue().strip()
+        attributes = [
+            item
+            for item in dir(self.calibration)
+            if not item.startswith("_")
+            and not callable(getattr(self.calibration, item))
+        ]
+        for attribute in attributes:
+            self.assertIn(attribute, output)

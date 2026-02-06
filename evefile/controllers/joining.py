@@ -243,7 +243,7 @@ main/standard section yet.
     "dirty" fixes to account for scans using MPSKIP and those scans
     "monitoring" a motor position via a pseudo-detector.
 
-    The ``EveHDF`` class (DS) uses LastNaNFill as a default as well but
+    The ``EveHDF`` class uses LastNaNFill as a default as well but
     additionally fills the channel values with the last known value,
     thus making up data. Therefore, EveHDF is considered harmful with
     potentially very serious consequences of your data analysis and cannot
