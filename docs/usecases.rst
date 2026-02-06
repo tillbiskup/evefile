@@ -624,3 +624,146 @@ The resulting :class:`pandas.DataFrame` can be output directly in the Python con
 
 As you see here, the first column is a "motor axis", hence with the (given) name as column header, while for the monitors (all the other columns), the IDs are used as column headers. This is, as mentioned, due to the fact that the (given) names of the monitors are *not unique* (and in the given example, you would end up with two columns labelled "Status" and two columns labelled "range", not knowing what device they belong to).
 
+
+Working with array detectors (MCAs)
+===================================
+
+.. versionadded:: 0.2
+
+One big difference in working with data containing array detectors compared to data containing only "simple" axes and channels: The array detector channel data are represented in ``evefile`` as classes: :class:`evefile.entities.data.ArrayChannelData` or :class:`evefile.entities.data.MCAChannelData`, respectively. A single object of such a class contains data that are spread over multiple datasets in the current eveH5 files (up to eveH5 schema version 7.1). The reason for creating the data classes is to provide you as user with a useful level of abstraction. You want to know that you used an array detector (or MCA, to be concrete), and the class should provide you with all the relevant details.
+
+Let's start simple, as usual, by loading a file containing array data from an MCA:
+
+
+.. code-block::
+
+    import evefile
+    file = evefile.EveFile(filename="mca.h5")
+
+
+Next, let's get an idea what's in this file:
+
+.. code-block::
+
+    file.show_info()
+
+
+The result may look as follows:
+
+.. code-block:: none
+
+    METADATA
+                           filename: mca.h5
+                      eveh5_version: 7.1
+                        eve_version: 2.2.0
+                        xml_version: 9.2
+                measurement_station: PGM
+                              start: 2025-08-21 20:16:21
+                                end: 2025-08-21 20:16:55
+                        description: example scan demonstrating mca usage
+                         simulation: False
+                     preferred_axis: Counter-mot
+                  preferred_channel: BRQM1:mca05.R0
+    preferred_normalisation_channel:
+
+    LOG MESSAGES
+
+    DATA
+    bsdd3_spectrum (BRQM1:mca05chan1) <MCAChannelData>
+    Counter (Counter-mot) <AxisData>
+    Ring_1 (bIICurrent:Mnt1chan1) <SinglePointChannelData>
+
+    SNAPSHOTS
+    bruckersdd3enc (MBEnc:brukerSDD3chan1) <ChannelData>
+    Bessy_Ringstrom (MDIZ3T5G:currentchan1) <ChannelData>
+    Bessy_Lebensdauer (MDIZ3T5G:lt10chan1) <ChannelData>
+    SM-Counter (SmCounter-det) <ChannelData>
+    TopupCountdown (TOPUPCC:estCntDwnchan1) <ChannelData>
+    Freigabe (TOPUPCC:stBSfreechan1) <ChannelData>
+    Ring_1 (bIICurrent:Mnt1chan1) <ChannelData>
+    Lebensdauer_1 (bIICurrent:Mnt1lifeTimechan1) <ChannelData>
+    TopupState (bIICurrent:Mnt1topupStatechan1) <ChannelData>
+    Ring_2 (bIICurrent:Mnt2chan1) <ChannelData>
+    Lebensdauer_2 (bIICurrent:Mnt2lifeTimechan1) <ChannelData>
+
+    MONITORS
+    prelifeTime (BRQM1:mca05.PLTM) <MonitorData>
+
+
+As we can see, there is a single MCA, the Bruker SDD (first line in the ``DATA`` block above). How do we know? Because its type is ``MCAChannelData`` Let's get the corresponding :obj:`MCAChannelData <evefile.entities.data.MCAChannelData>` object and explore it further:
+
+
+.. code-block::
+
+    sdd = file.get_data("bsdd3_spectrum")
+    sdd.show_info()
+
+
+The result may look as follows:
+
+.. code-block:: none
+
+    METADATA
+                name: bsdd3_spectrum
+                unit:
+                  id: BRQM1:mca05chan1
+                  pv: BRQM1:mca05.VAL
+         access_mode: ca
+    preset_life_time: 3.0
+    preset_real_time: 0.0
+         calibration:
+                         offset: -250.0
+                      quadratic: 0.0
+                          slope: 2.5
+
+    FIELDS
+    axis
+    data
+    life_time
+    position_counts
+    real_time
+    roi
+
+
+For details of the meaning of the individual metadata attributes and fields, see the documentation of the :class:`evefile.entities.data.MCAChannelData` class and the respective metadata classes. A few comments on important fields:
+
+* Field ``axis`` -- object of type :class:`evefile.entities.data.Axis` containing the data (and metadata) for the *x* axis of the MCA spectra. The attribute :attr:`evefile.entities.data.Axis.values` contains the calibrated values and can be used directly for the *x* axis.
+* Field ``data`` contains the entire data as 2D array, each row representing one measured array ("spectrum").
+* Field ``roi`` -- list of :obj:`evefile.entities.data.MCAChannelROIData` objects, each containing the data (and metadata) for a region of interest (ROI) defined. Whether the individual object contains data depends on whether data have been acquired during the actual measurement and not only during the snapshot(s).
+* The difference between ``preset_life_time`` and ``life_time`` (and between ``preset_real_time`` and ``real_time``, accordingly) is that those attributes marked "preset" are scalar settings of the MCA, while the others are the actual values recorded for each individual array ("spectrum").
+
+
+Getting access to all data recorded for an MCA is fairly straight-forward:
+
+.. code-block::
+
+    sdd.data
+
+This returns a 2D :class:`numpy.ndarray` containing the individual arrays ("spectra") *row-wise*. Hence, to get an individual "spectrum", you may do something similar to:
+
+.. code-block::
+
+    sdd.data[0, :]
+
+Now for the "cool" part: You may want to have a calibrated axis for your spectrum, and this is (at least for all MCAs that have the calibration fields ``CALO``, ``CALS``, and ``CALQ`` recorded during a measurement) easily possible. The attribute :attr:`evefile.entities.data.Axis.values` contains the calibrated values and can be used directly for the *x* axis. Hence, assuming you have matplotlib available (and imported according to defaults), you could plot your data somehow like this:
+
+.. code-block::
+
+    plt.plot(sdd.axis.values, sdd.data[0, :])
+
+Note, however, that actual plotting and further analysis of data is *not* the scope of the ``evefile`` package and will hence not be detailed further here.
+
+
+.. admonition:: A note on using get_preferred_data()
+
+    If you want to use the method :meth:`Evefile.get_preferred_data() <evefile.boundaries.evefile.EveFile.get_preferred_data>`, you may not get the expected result using the file of the example above:
+
+    .. code-block::
+
+        >>> file.get_preferred_data()
+        Dataset BRQM1:mca05.R0 not found, possibly an attribute or option?
+        [<evefile.entities.data.AxisData object at 0x7f8030668c90>, None, None]
+
+    So what is going on here? The warning printed to the Python command line gives you a hint: The dataset (from the eveH5 file) marked as "preferred_channel", namely ``BRQM1:mca05.R0``, cannot be found. Why that? Because it refers to an ROI that is now part of the :obj:`MCAChannelData <evefile.entities.data.MCAChannelData>` object. While a :obj:`evefile.entities.data.MCAChannelROIData` object is actually a subclass of :class:`evefile.entities.data.MeasureData` and hence *could* be sensibly returned, the same is *not* true for other attributes, such as :attr:`MCAChannelData.life_time <evefile.entities.data.MCAChannelData.life_time>`. Furthermore, returning the attribute of a class as individual dataset jeopardises the idea of the abstraction behind such classes as :class:`MCAChannelData <evefile.entities.data.MCAChannelData>`, *i.e.*, having a representation of a complex channel consisting of both, data and accompanying metadata.
+
+    Of course, when plotting and/or analysing data, the respective data need to be available conveniently. However, this is something left to dedicated data visualisation and analysis packages, namely `radiometry <https://docs.radiometry.de>`_ and `evedataviewer <https://evedataviewer.docs.radiometry.de>`_.
