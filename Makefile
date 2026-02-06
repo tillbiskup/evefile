@@ -12,6 +12,7 @@ help:
 	@echo "The following targets are available:"
 	@echo ""
 	@echo "docs  - create documentation using Sphinx"
+	@echo "docs-multiversion - create versioned docs using Sphinx"
 	@echo "tests - run unittests"
 	@echo "check - check code using prospector"
 	@echo "black - format code using Black"
@@ -19,6 +20,10 @@ help:
 docs:
 	@echo "Create documentation using Sphinx"
 	$(MAKE) -C docs html
+
+docs-multiversion:
+	@echo "Create versioned docs using Sphinx"
+	sphinx-multiversion docs/ docs/_build/html
 
 tests:
 	@echo "Run unittests"
