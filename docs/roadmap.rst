@@ -11,12 +11,6 @@ For version 0.3
 * Add more complex data types for cameras?
 
 
-For version 0.2
-===============
-
-* Add more complex data types for SDDs/array detectors
-
-
 Todos
 =====
 

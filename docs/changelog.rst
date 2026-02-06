@@ -8,7 +8,7 @@ This page contains a summary of changes between the official evefile releases. O
 Version 0.2.0
 =============
 
-Not yet released
+Released 2026-02-06
 
 
 New features
